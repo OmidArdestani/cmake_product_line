@@ -20,6 +20,31 @@
 - **Qt Framework:** Version 6.7.2 or higher.
 - **CMake:** Version 3.16 or higher.
 - **GCC/MinGW or MSVC:** Ensure you have a C++17-compliant compiler.
+- **gRPC:** Version 1.40 or higher with C++ bindings.
+- **Protocol Buffers:** Version 3.21 or higher.
+
+### Installing Dependencies on Ubuntu/Debian
+
+```bash
+sudo apt update
+sudo apt install -y qt6-base-dev qt6-tools-dev cmake build-essential
+sudo apt install -y libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc
+```
+
+### Installing Dependencies on Windows
+
+1. Install Qt 6.7.2+ from [Qt website](https://www.qt.io/download)
+2. Install CMake from [CMake website](https://cmake.org/download/)
+3. Install gRPC using vcpkg:
+   ```cmd
+   vcpkg install grpc protobuf
+   ```
+
+### Installing Dependencies on macOS
+
+```bash
+brew install qt6 cmake grpc protobuf
+```
 
 ---
 
@@ -52,11 +77,81 @@ XXProductLine/
 
 ## API Support
 
-The project includes modular APIs to facilitate the addition and configuration of product-specific features. These APIs leverage **QWebSocket** for real-time communication, utilizing **JSON** as the data exchange format. This design ensures seamless integration of new product builders and assets into the main application while maintaining flexibility and extensibility.
+The project includes modular APIs to facilitate the addition and configuration of product-specific features. These APIs leverage **gRPC** for high-performance communication, utilizing **Protocol Buffers** for efficient data serialization. This design ensures seamless integration of new product builders and assets into the main application while maintaining flexibility, type safety, and extensibility.
 
-## API Example
+## gRPC API Example
 
-```bash
+### C++ Client Example
+
+```cpp
+#include <grpcpp/grpcpp.h>
+#include <iostream>
+#include <memory>
+#include <string>
+#include "productline_api.grpc.pb.h"
+
+class ProductLineClient {
+public:
+    ProductLineClient(std::shared_ptr<grpc::Channel> channel)
+        : stub_(productline::ProductLineService::NewStub(channel)) {}
+
+    // Calls a function on a specific instance
+    std::string CallFunction(uint64_t instanceId, const std::string& functionName, const std::string& paramsJson) {
+        productline::CallFunctionRequest request;
+        productline::CallFunctionResponse response;
+        grpc::ClientContext context;
+
+        request.set_instance_id(instanceId);
+        request.set_function_name(functionName);
+        request.set_params_json(paramsJson);
+
+        grpc::Status status = stub_->CallFunction(&context, request, &response);
+
+        if (status.ok()) {
+            return "Result: " + response.result_json();
+        } else {
+            return "RPC failed: " + status.error_message();
+        }
+    }
+
+    // Gets the main instance
+    std::string GetInstance() {
+        productline::GetInstanceRequest request;
+        productline::GetInstanceResponse response;
+        grpc::ClientContext context;
+
+        grpc::Status status = stub_->GetInstance(&context, request, &response);
+
+        if (status.ok()) {
+            return "Instance ID: " + std::to_string(response.instance_id());
+        } else {
+            return "RPC failed: " + status.error_message();
+        }
+    }
+
+private:
+    std::unique_ptr<productline::ProductLineService::Stub> stub_;
+};
+
+int main(int argc, char** argv) {
+    // Create a channel to the server
+    std::string server_address("localhost:1025");
+    ProductLineClient client(grpc::CreateChannel(server_address, grpc::InsecureChannelCredentials()));
+
+    // Test GetInstance
+    std::cout << "Testing GetInstance: " << client.GetInstance() << std::endl;
+
+    // Test CallFunction with test parameters
+    std::cout << "Testing CallFunction: " 
+              << client.CallFunction(0, "getFeature1", "{}") << std::endl;
+
+    return 0;
+}
+```
+
+### Starting the gRPC Server
+
+```cpp
 #include <QCoreApplication>
 #include <QJsonObject>
 #include <QDebug>
@@ -73,28 +168,96 @@ int main(int argc, char *argv[])
     // Create the ProductLineAPI instance
     ProductLineAPI productLineAPI(&mainWindow);
 
-    // Start the WebSocket server
+    // Start the gRPC server (runs on port 1025 by default)
     productLineAPI.start();
 
     // Insert a new instance into the API
     IPLAsset* newAsset = new SomeIPLAssetImplementation(); // Assume SomeIPLAssetImplementation is a concrete implementation of IPLAsset
     productLineAPI.insertInstance(1, newAsset);
 
-    // Call a function on the new instance
+    // Call a function on the new instance (can also be called via gRPC)
     QJsonObject params;
     params["param1"] = "value1";
     QJsonObject result = productLineAPI.callFunction(1, "someFunction", params);
     qDebug() << "Function call result:" << result;
 
-    // Get the main instance
+    // Get the main instance (can also be called via gRPC)
     QJsonObject mainInstance = productLineAPI.getInstance(QJsonObject());
     qDebug() << "Main instance:" << mainInstance;
 
-    // Stop the WebSocket server
-    productLineAPI.stop();
+    // The gRPC server will continue running
+    // Stop the gRPC server when done
+    // productLineAPI.stop();
 
     return a.exec();
 }
+```
+
+### gRPC Service Definition
+
+The gRPC API is defined using Protocol Buffers in `productline_api.proto`:
+
+```protobuf
+syntax = "proto3";
+
+package productline;
+
+service ProductLineService {
+    rpc CallFunction(CallFunctionRequest) returns (CallFunctionResponse);
+    rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse);
+    rpc InsertInstance(InsertInstanceRequest) returns (InsertInstanceResponse);
+}
+
+message CallFunctionRequest {
+    uint64 instance_id = 1;
+    string function_name = 2;
+    string params_json = 3;  // JSON-encoded parameters
+}
+
+message CallFunctionResponse {
+    string result_json = 1;  // JSON-encoded result
+    string error = 2;
+}
+
+message GetInstanceRequest {
+    // Empty for now
+}
+
+message GetInstanceResponse {
+    uint64 instance_id = 1;
+    string error = 2;
+}
+```
+
+### Python Client Example
+
+```python
+import grpc
+import json
+from productline_api_pb2 import CallFunctionRequest, GetInstanceRequest
+from productline_api_pb2_grpc import ProductLineServiceStub
+
+def main():
+    # Create a channel to the server
+    channel = grpc.insecure_channel('localhost:1025')
+    stub = ProductLineServiceStub(channel)
+    
+    # Test GetInstance
+    request = GetInstanceRequest()
+    response = stub.GetInstance(request)
+    print(f"Instance ID: {response.instance_id}, Error: {response.error}")
+    
+    # Test CallFunction
+    request = CallFunctionRequest()
+    request.instance_id = 0
+    request.function_name = "getFeature1"
+    request.params_json = "{}"
+    
+    response = stub.CallFunction(request)
+    print(f"Result: {response.result_json}, Error: {response.error}")
+
+if __name__ == '__main__':
+    main()
 ```
 
 ### Key Features
