@@ -11,7 +11,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets WebSockets Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets Network)
+
+# Find gRPC and Protocol Buffers
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GRPC REQUIRED grpc++)
+pkg_check_modules(PROTOBUF REQUIRED protobuf)
 
 # Set the current product
 set(CURRENT_PRODUCT "Product_1")
@@ -62,13 +67,14 @@ target_compile_definitions(XXProductLineApplication PRIVATE ${DEFINES})
 # Apply dependencies
 add_dependencies(XXProductLineApplication ${Dependencies})
 
-# Link the required Qt6/5 libraries
+# Link the required Qt6/5 libraries and gRPC
 target_link_libraries(XXProductLineApplication PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::Widgets
-    Qt${QT_VERSION_MAJOR}::WebSockets
     Qt${QT_VERSION_MAJOR}::Network
+    ${GRPC_LIBRARIES}
+    ${PROTOBUF_LIBRARIES}
     ${LIBS}
 )
 
@@ -76,6 +82,8 @@ target_link_libraries(XXProductLineApplication PRIVATE
 target_include_directories(XXProductLineApplication PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/ProductLineAPI
+    ${GRPC_INCLUDE_DIRS}
+    ${PROTOBUF_INCLUDE_DIRS}
     ${ASSETS_HEADER_DIR}
 )
 

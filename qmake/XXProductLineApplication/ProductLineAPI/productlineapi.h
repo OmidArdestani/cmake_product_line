@@ -1,6 +1,6 @@
 #pragma once
 
-#include "WebSocketsAPI.h"
+#include "GrpcAPI.h"
 
 #include <QObject>
 #include <sharedassets.h>
@@ -19,13 +19,13 @@ public:
     void stop();
 
     void insertInstance(const quint64& key, IPLAsset* instance);
-
-private:
     QJsonObject getInstance(QJsonObject);
 
 private:
+
+private:
     MainWindow* productLineMainWindow {nullptr};
-    WebSocketsAPI* webSocketsAPI;
+    GrpcAPI* grpcAPI;
 
     QMap<quint64, IPLAsset*> instanceMap;
 };

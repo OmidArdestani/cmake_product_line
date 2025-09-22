@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package productline;
+
+// gRPC service definition for the Product Line API
+service ProductLineService {
+    // Call a function on a specific instance
+    rpc CallFunction(CallFunctionRequest) returns (CallFunctionResponse);
+    
+    // Get the main instance
+    rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse);
+    
+    // Insert a new instance (for management purposes)
+    rpc InsertInstance(InsertInstanceRequest) returns (InsertInstanceResponse);
+}
+
+// Request to call a function
+message CallFunctionRequest {
+    uint64 instance_id = 1;
+    string function_name = 2;
+    string params_json = 3;  // JSON-encoded parameters
+}
+
+// Response from function call
+message CallFunctionResponse {
+    string result_json = 1;  // JSON-encoded result
+    string error = 2;
+}
+
+// Request to get the main instance
+message GetInstanceRequest {
+    // Empty for now - could add parameters in future
+}
+
+// Response with instance information
+message GetInstanceResponse {
+    uint64 instance_id = 1;
+    string error = 2;
+}
+
+// Request to insert a new instance
+message InsertInstanceRequest {
+    uint64 instance_id = 1;
+    string instance_type = 2;  // Type identifier for the instance
+}
+
+// Response from insert instance
+message InsertInstanceResponse {
+    bool success = 1;
+    string error = 2;
+}

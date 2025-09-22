@@ -5,7 +5,7 @@
 ProductLineAPI::ProductLineAPI(MainWindow* parent)
     : QObject{parent}
     , productLineMainWindow(parent)
-    , webSocketsAPI(new WebSocketsAPI(this))
+    , grpcAPI(new GrpcAPI(this))
 {
     // The main product line is defined as root
     insertInstance(0, productLineMainWindow);
@@ -37,16 +37,16 @@ QJsonObject ProductLineAPI::callFunction(quint64 instanceId, QString functionNam
     return (instanceFunctionMap.value(functionName))(params);
 }
 
-// Starts the WebSocket server
+// Starts the gRPC server
 void ProductLineAPI::start()
 {
-    webSocketsAPI->startServer(1025);
+    grpcAPI->startServer(1025);
 }
 
-// Stops the WebSocket server
+// Stops the gRPC server
 void ProductLineAPI::stop()
 {
-    webSocketsAPI->stopServer();
+    grpcAPI->stopServer();
 }
 
 // Inserts an instance into the instance map

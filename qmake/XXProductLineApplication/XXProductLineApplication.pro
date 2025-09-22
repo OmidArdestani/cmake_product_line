@@ -1,5 +1,9 @@
 QT       += core gui
-QT += websockets network
+QT += network
+
+# Add gRPC and protobuf libraries
+CONFIG += link_pkgconfig
+PKGCONFIG += grpc++ protobuf
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
