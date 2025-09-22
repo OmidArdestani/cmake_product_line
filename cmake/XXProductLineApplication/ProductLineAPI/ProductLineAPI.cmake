@@ -1,7 +1,7 @@
 # Define headers and sources for ProductLineAPI
 set(PRODUCT_LINE_API_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ProductLineAPI/productlineapi.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/ProductLineAPI/websocketsapi.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/ProductLineAPI/WebSocketsAPI.h
 )
 
 set(PRODUCT_LINE_API_SOURCES

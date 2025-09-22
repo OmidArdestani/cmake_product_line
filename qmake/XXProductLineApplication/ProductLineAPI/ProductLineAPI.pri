@@ -2,7 +2,7 @@
 
 HEADERS += \
     $$PWD/productlineapi.h \
-    $$PWD/websocketsapi.h
+    $$PWD/WebSocketsAPI.h
 
 SOURCES += \
     $$PWD/productlineapi.cpp \
