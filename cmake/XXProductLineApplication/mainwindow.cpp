@@ -1,25 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
-#ifdef Product_1
-#include "ProductBuilder/Product1Builder.h"
-#endif
-
-#ifdef Product_2
-#include "ProductBuilder/Product2Builder.h"
-#endif
-
-#ifdef Product_3
-#include "ProductBuilder/Product3Builder.h"
-#endif
-
-#ifdef Product_4
-#include "ProductBuilder/Product4Builder.h"
-#endif
-
-#ifdef Product_5
-#include "ProductBuilder/Product5Builder.h"
-#endif
+#include "ProductBuilder/ProductBuilderFactory.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -38,25 +19,13 @@ MainWindow::~MainWindow()
 
 void MainWindow::buildProduct()
 {
-#ifdef Product_1
-    productBuilder = new Product1Builder();
-#endif
+    productBuilder = ProductBuilderFactory::create();
 
-#ifdef Product_2
-    productBuilder = new Product2Builder();
-#endif
+    if (!productBuilder)
+        return;
 
-#ifdef Product_3
-    productBuilder = new Product3Builder();
-#endif
-
-#ifdef Product_4
-    productBuilder = new Product4Builder();
-#endif
-
-#ifdef Product_5
-    productBuilder = new Product5Builder();
-#endif
+    // Transfer ownership to Qt's object tree to prevent a memory leak.
+    productBuilder->setParent(this);
 
     productBuilder->registerFeatures(productAssetMap);
     productBuilder->buildMenu(menuBar());
@@ -81,11 +50,17 @@ QJsonObject MainWindow::getFeature1(QJsonObject)
     };
 }
 
+QJsonObject MainWindow::getInstance(QJsonObject params)
+{
+    return productLineAPI.getInstance(params);
+}
+
 APIFunctionMap MainWindow::getAPIFunctionMap()
 {
     APIFunctionMap apiFunctionMap;
 
     apiFunctionMap.insert("getFeature1", BIND_API_FUNC(&MainWindow::getFeature1));
+    apiFunctionMap.insert("getInstance", BIND_API_FUNC(&MainWindow::getInstance));
 
     return apiFunctionMap;
 }
@@ -103,4 +78,3 @@ void MainWindow::on_actionRun_API_triggered()
         ui->actionRun_API->setText("Run");
     }
 }
-

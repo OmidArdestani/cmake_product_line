@@ -16,8 +16,6 @@ class MainWindow : public QMainWindow, public IPLAsset
 {
     Q_OBJECT
 
-    friend ProductLineAPI;
-
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
@@ -30,7 +28,8 @@ private:
 
     // API Functions
 private:
-    QJsonObject getFeature1(QJsonObject);
+    QJsonObject getFeature1(QJsonObject params);
+    QJsonObject getInstance(QJsonObject params);
 
 private:
     Ui::MainWindow *ui;

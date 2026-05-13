@@ -1,105 +1,44 @@
-# Define headers and sources
-set(PRODUCT_BUILDER_HEADERS)
-set(PRODUCT_BUILDER_SOURCES)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../CMakeModules/AssetLinkHelper.cmake)
 
-# Check for Product-specific configurations by verifying the macro definition
+# ProductBuilderFactory is always compiled (it contains the #ifdef chains
+# so no other file needs to).
+set(PRODUCT_BUILDER_HEADERS
+    ProductBuilder/ProductBuilderFactory.h
+)
+set(PRODUCT_BUILDER_SOURCES
+    ProductBuilder/ProductBuilderFactory.cpp
+)
+
+# Add the concrete builder for the active product configuration.
 if(CURRENT_PRODUCT STREQUAL "Product_1")
     list(APPEND PRODUCT_BUILDER_HEADERS ProductBuilder/Product1Builder.h)
     list(APPEND PRODUCT_BUILDER_SOURCES ProductBuilder/Product1Builder.cpp)
-endif()
-
-if(CURRENT_PRODUCT STREQUAL "Product_2")
+elseif(CURRENT_PRODUCT STREQUAL "Product_2")
     list(APPEND PRODUCT_BUILDER_HEADERS ProductBuilder/Product2Builder.h)
     list(APPEND PRODUCT_BUILDER_SOURCES ProductBuilder/Product2Builder.cpp)
-endif()
-
-if(CURRENT_PRODUCT STREQUAL "Product_3")
+elseif(CURRENT_PRODUCT STREQUAL "Product_3")
     list(APPEND PRODUCT_BUILDER_HEADERS ProductBuilder/Product3Builder.h)
     list(APPEND PRODUCT_BUILDER_SOURCES ProductBuilder/Product3Builder.cpp)
-endif()
-
-if(CURRENT_PRODUCT STREQUAL "Product_4")
+elseif(CURRENT_PRODUCT STREQUAL "Product_4")
     list(APPEND PRODUCT_BUILDER_HEADERS ProductBuilder/Product4Builder.h)
     list(APPEND PRODUCT_BUILDER_SOURCES ProductBuilder/Product4Builder.cpp)
-endif()
-
-if(CURRENT_PRODUCT STREQUAL "Product_5")
+elseif(CURRENT_PRODUCT STREQUAL "Product_5")
     list(APPEND PRODUCT_BUILDER_HEADERS ProductBuilder/Product5Builder.h)
     list(APPEND PRODUCT_BUILDER_SOURCES ProductBuilder/Product5Builder.cpp)
 endif()
 
-# Link SharedAssets library
-if(MSVC)
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../SharedAssets/release/ -lSharedAssets)
-    else()
-        list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../SharedAssets/debug/ -lSharedAssets)
-    endif()
-else()
-    list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../SharedAssets/ -lSharedAssets)
-endif()
+# Always link SharedAssets.
+pl_link_shared_assets()
 
-list(APPEND ASSETS_HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../SharedAssets)
-list(APPEND Dependencies SharedAssets)
-
-# Include SharedAssets and UniqueAsset libraries based on configuration
+# Link the UniqueAsset libraries selected for the current product.
 foreach(ASSET IN LISTS CONFIG)
-    if(${ASSET} MATCHES "UAsset1")
-        if(MSVC)
-            if(CMAKE_BUILD_TYPE STREQUAL "Release")
-                list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset1/release/ -lUniqueAsset1)
-            else()
-                list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset1/debug/ -lUniqueAsset1)
-            endif()
-        else()
-            list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset1/ -lUniqueAsset1)
-        endif()
-
-        list(APPEND DEFINES -DUAsset1)
-        list(APPEND ASSETS_HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../UniqueAsset1)
-        list(APPEND Dependencies UniqueAsset1)
-    elseif(${ASSET} MATCHES "UAsset2")
-        if(MSVC)
-            if(CMAKE_BUILD_TYPE STREQUAL "Release")
-                list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset2/release/ -lUniqueAsset2)
-            else()
-                list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset2/debug/ -lUniqueAsset2)
-            endif()
-        else()
-            list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset2/ -lUniqueAsset2)
-        endif()
-
-        list(APPEND DEFINES -DUAsset2)
-        list(APPEND ASSETS_HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../UniqueAsset2)
-        list(APPEND Dependencies UniqueAsset2)
-    elseif(${ASSET} MATCHES "UAsset3")
-        if(MSVC)
-            if(CMAKE_BUILD_TYPE STREQUAL "Release")
-                list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset3/release/ -lUniqueAsset3)
-            else()
-                list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset3/debug/ -lUniqueAsset3)
-            endif()
-        else()
-            list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset3/ -lUniqueAsset3)
-        endif()
-
-        list(APPEND DEFINES -DUAsset3)
-        list(APPEND ASSETS_HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../UniqueAsset3)
-        list(APPEND Dependencies UniqueAsset3)
-    elseif(${ASSET} MATCHES "UAsset4")
-        if(MSVC)
-            if(CMAKE_BUILD_TYPE STREQUAL "Release")
-                list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset4/release/ -lUniqueAsset4)
-            else()
-                list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset4/debug/ -lUniqueAsset4)
-            endif()
-        else()
-            list(APPEND LIBS -L${CMAKE_CURRENT_BINARY_DIR}/../UniqueAsset4/ -lUniqueAsset4)
-        endif()
-
-        list(APPEND DEFINES -DUAsset4)
-        list(APPEND ASSETS_HEADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../UniqueAsset4)
-        list(APPEND Dependencies UniqueAsset4)
+    if(${ASSET} STREQUAL "UAsset1")
+        pl_link_unique_asset(UniqueAsset1 UAsset1)
+    elseif(${ASSET} STREQUAL "UAsset2")
+        pl_link_unique_asset(UniqueAsset2 UAsset2)
+    elseif(${ASSET} STREQUAL "UAsset3")
+        pl_link_unique_asset(UniqueAsset3 UAsset3)
+    elseif(${ASSET} STREQUAL "UAsset4")
+        pl_link_unique_asset(UniqueAsset4 UAsset4)
     endif()
 endforeach()
-

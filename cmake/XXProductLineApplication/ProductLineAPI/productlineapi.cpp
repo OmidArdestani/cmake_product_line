@@ -1,14 +1,12 @@
 #include "productlineapi.h"
 
-#include "../mainwindow.h"
-
-ProductLineAPI::ProductLineAPI(MainWindow* parent)
+ProductLineAPI::ProductLineAPI(IPLAsset* rootAsset, QObject* parent)
     : QObject{parent}
-    , productLineMainWindow(parent)
+    , rootAsset(rootAsset)
     , webSocketsAPI(new WebSocketsAPI(this))
 {
-    // The main product line is defined as root
-    insertInstance(0, productLineMainWindow);
+    // The root asset (instance 0) is the entry point for all API calls.
+    insertInstance(0, rootAsset);
 }
 
 // Calls a function on a specific instance
@@ -37,10 +35,10 @@ QJsonObject ProductLineAPI::callFunction(quint64 instanceId, QString functionNam
     return (instanceFunctionMap.value(functionName))(params);
 }
 
-// Starts the WebSocket server
-void ProductLineAPI::start()
+// Starts the WebSocket server on the specified port
+void ProductLineAPI::start(quint16 port)
 {
-    webSocketsAPI->startServer(1025);
+    webSocketsAPI->startServer(port);
 }
 
 // Stops the WebSocket server
@@ -55,11 +53,11 @@ void ProductLineAPI::insertInstance(const quint64 &key, IPLAsset *instance)
     instanceMap.insert(key, instance);
 }
 
-// Gets the main instance
+// Returns the instance ID of the root asset so WebSocket clients can bootstrap
 QJsonObject ProductLineAPI::getInstance(QJsonObject)
 {
     QJsonObject result{
-        { "instanceId", QString::number(reinterpret_cast<quintptr>(productLineMainWindow)) },
+        { "instanceId", QString::number(reinterpret_cast<quintptr>(rootAsset)) },
         { "error", "" }
     };
 
