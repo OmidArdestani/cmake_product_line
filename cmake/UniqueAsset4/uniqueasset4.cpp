@@ -4,7 +4,7 @@ UniqueAsset4::UniqueAsset4() {}
 
 QJsonObject UniqueAsset4::runFeature(QJsonObject params)
 {
-
+    return QJsonObject();
 }
 
 void UniqueAsset4::exceptionFunction()

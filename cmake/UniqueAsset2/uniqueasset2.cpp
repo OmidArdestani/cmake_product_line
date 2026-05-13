@@ -5,7 +5,7 @@ UniqueAsset2::UniqueAsset2() {}
 
 QJsonObject UniqueAsset2::runFeature(QJsonObject params)
 {
-
+    return QJsonObject();
 }
 
 void UniqueAsset2::exceptionFunction()
