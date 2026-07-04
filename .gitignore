@@ -1,6 +1,12 @@
+# Build directories
+/build*/
 */build/*
-XXProductLine.pro.user
-cmake/CMakeLists.txt.user
-/cmake/.vs
-/.vs
 /cmake/out/build
+
+# IDE
+/.vs
+.vscode/
+*.user
+
+# Qt artefacts
+XXProductLine.pro.user

@@ -1,0 +1,29 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "macos-qt",
+      "displayName": "macOS Qt (Volumes/Mac-Ex-SSD)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "/Volumes/Mac-Ex-SSD/Qt/6.11.0/macos",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CURRENT_PRODUCT": "Product_1"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "macos-qt",
+      "configurePreset": "macos-qt"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "macos-qt",
+      "configurePreset": "macos-qt",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
