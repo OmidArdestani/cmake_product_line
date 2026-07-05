@@ -17,6 +17,7 @@ add_executable(XXProductLineTests
     test_unique_asset2.cpp
     test_unique_asset3.cpp
     test_unique_asset4.cpp
+    test_grpc_api.cpp
 )
 
 target_link_libraries(XXProductLineTests PRIVATE
@@ -25,6 +26,7 @@ target_link_libraries(XXProductLineTests PRIVATE
     UniqueAsset2
     UniqueAsset3
     UniqueAsset4
+    pl_proto
     Qt${QT_VERSION_MAJOR}::Core
 )
 

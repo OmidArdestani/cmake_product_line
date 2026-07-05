@@ -9,9 +9,9 @@
 
 - **Product Builder Design:** Implements a builder pattern for dynamically configuring product-specific features and menus.
 - **Shared Libraries:** Unique assets are implemented as shared libraries for modular development.
-- **Unit Testing:** GoogleTest test suite covering all assets.
+- **Unit Testing:** GoogleTest test suite covering all assets, including gRPC integration tests.
 - **CMake-only Build System:** Single CMake tree; QMake support removed.
-- **API Support:** Modular WebSocket-based APIs for product-specific configurations.
+- **API Support:** Typed gRPC API — one service contract per unique asset plus a core discovery service.
 
 ---
 
@@ -20,7 +20,9 @@
 - **Qt Framework:** Version 6.7.2 or higher (Qt5 supported).
 - **CMake:** Version 3.16 or higher.
 - **GCC/MinGW or MSVC:** C++17-compliant compiler.
-- **Git:** With submodule support (GoogleTest vendored under `external/gtest`).
+- **Git:** With submodule support. Vendored submodules:
+  - `external/gtest` — GoogleTest
+  - `external/grpc` — gRPC v1.82.0 (**large**: clone with `--recurse-submodules`; first build takes ~15–30 min while gRPC/protobuf/abseil compile)
 
 ---
 
@@ -56,14 +58,17 @@ Available product variants: `Product_1` … `Product_5`
 │   ├── main.cpp
 │   ├── mainwindow.{h,cpp,ui}
 │   ├── ProductBuilder/         # Product1Builder … Product5Builder (SPL variant selection)
-│   └── ProductLineAPI/         # WebSocket-based runtime API
+│   └── ProductLineAPI/         # gRPC server (GrpcApiServer) + core service (CoreService)
 ├── cmake/
 │   └── ProductConfig.cmake     # Maps CURRENT_PRODUCT → asset list + compile definitions
 ├── docs/                       # Extended documentation
 ├── external/
+│   ├── grpc/                   # gRPC (git submodule, pinned v1.82.0)
 │   └── gtest/                  # GoogleTest (git submodule)
 ├── include/                    # Reserved for project-wide public headers
+├── proto/                      # API contracts (.proto): common, pl_core, unique_asset1…4
 ├── libs/
+│   ├── pl_proto/               # Static library: generated protobuf/gRPC code for all contracts
 │   ├── pl_core/                # Static library: shared base (IPLAsset, SharedAssets)
 │   │   ├── include/pl_core/
 │   │   └── src/
@@ -83,60 +88,63 @@ Available product variants: `Product_1` … `Product_5`
 
 ## API Support
 
-The project includes modular APIs to facilitate the addition and configuration of product-specific features. These APIs leverage **QWebSocket** for real-time communication, utilizing **JSON** as the data exchange format. This design ensures seamless integration of new product builders and assets into the main application while maintaining flexibility and extensibility.
+The runtime API is **gRPC** with typed contracts defined under `proto/`:
 
-## API Example
+| Service | Proto | Purpose |
+|---------|-------|---------|
+| `plapi.ProductLineCore` | `pl_core.proto` | Asset discovery (`ListAssets`), lifecycle (`EnableAsset`, `GetAssetState`) |
+| `plapi.UniqueAsset1Service` … `plapi.UniqueAsset4Service` | `unique_asset1.proto` … | One typed service per asset (`RunFeature`) |
+
+Each unique asset owns its gRPC service implementation (a thin transport shim delegating to the asset's feature logic). The application (`GrpcApiServer`, default port **50051**) registers the core service plus one service per asset of the active product — so each product variant exposes exactly its own API surface.
+
+### Exploring the API
 
 ```bash
-#include <QCoreApplication>
-#include <QJsonObject>
-#include <QDebug>
-#include "productlineapi.h"
-#include "mainwindow.h"
+# Start the app, trigger "Run API" from the menu, then:
+grpcurl -plaintext localhost:50051 list
+grpcurl -plaintext -d '{"name": "UniqueAsset1", "enable": true}' \
+    localhost:50051 plapi.ProductLineCore/EnableAsset
+grpcurl -plaintext -d '{"params": [{"key": "input", "value": "42"}]}' \
+    localhost:50051 plapi.UniqueAsset1Service/RunFeature
+```
 
-int main(int argc, char *argv[])
+### C++ Client Example
+
+```cpp
+#include <grpcpp/grpcpp.h>
+#include <unique_asset1.grpc.pb.h>
+
+int main()
 {
-    QCoreApplication a(argc, argv);
+    auto channel = grpc::CreateChannel("localhost:50051",
+                                       grpc::InsecureChannelCredentials());
+    auto stub = plapi::UniqueAsset1Service::NewStub(channel);
 
-    // Create the main window
-    MainWindow mainWindow;
+    plapi::Asset1RunFeatureRequest request;
+    auto* param = request.add_params();
+    param->set_key("input");
+    param->set_value("42");
 
-    // Create the ProductLineAPI instance
-    ProductLineAPI productLineAPI(&mainWindow);
+    plapi::Asset1RunFeatureReply reply;
+    grpc::ClientContext context;
+    grpc::Status status = stub->RunFeature(&context, request, &reply);
 
-    // Start the WebSocket server
-    productLineAPI.start();
-
-    // Insert a new instance into the API
-    IPLAsset* newAsset = new SomeIPLAssetImplementation(); // Assume SomeIPLAssetImplementation is a concrete implementation of IPLAsset
-    productLineAPI.insertInstance(1, newAsset);
-
-    // Call a function on the new instance
-    QJsonObject params;
-    params["param1"] = "value1";
-    QJsonObject result = productLineAPI.callFunction(1, "someFunction", params);
-    qDebug() << "Function call result:" << result;
-
-    // Get the main instance
-    QJsonObject mainInstance = productLineAPI.getInstance(QJsonObject());
-    qDebug() << "Main instance:" << mainInstance;
-
-    // Stop the WebSocket server
-    productLineAPI.stop();
-
-    return a.exec();
+    return status.ok() ? 0 : 1;
 }
 ```
 
 ### Key Features
 
-- **Real-Time Updates**: Instant synchronization between components and features.
-- **Interoperability**: JSON's lightweight and human-readable format simplifies communication across diverse systems.
-- **Scalability**: Easily extend APIs to support new product configurations or features.
+- **Typed Contracts**: Each asset's API is a versionable `.proto` schema — breaking changes are visible at compile time.
+- **Product-Scoped Surface**: A product variant only serves the asset services it actually ships.
+- **Interoperability**: Clients in any gRPC-supported language (Python, Go, TypeScript, …).
+
+### Threading Rule
+
+gRPC handlers run on gRPC worker threads, **not** the Qt main thread. Handlers that touch UI state must marshal via `QMetaObject::invokeMethod(target, ..., Qt::BlockingQueuedConnection)`.
 
 ### Technologies Used
-- **QWebSocket**: For real-time communication.
-- **JSON**: For data exchange between components and systems.
+- **gRPC / Protocol Buffers**: Typed RPC transport and contracts (vendored submodule, v1.82.0).
 
 
 ## Unit Testing
