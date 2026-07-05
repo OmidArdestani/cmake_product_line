@@ -1,0 +1,16 @@
+// Shared message types for the XX Product Line API.
+syntax = "proto3";
+
+package plapi;
+
+// Uniform status carried in every reply. `code` 0 == OK.
+message Status {
+  int32 code = 1;      // 0 = OK, non-zero = asset-specific error code
+  string message = 2;  // human-readable error description, empty on success
+}
+
+// Generic key/value parameter, used where features accept open-ended input.
+message Param {
+  string key = 1;
+  string value = 2;
+}
