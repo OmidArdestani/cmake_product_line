@@ -1,5 +1,9 @@
 #include "Product5Builder.h"
 
+#include <uniqueasset1.h>
+#include <uniqueasset3.h>
+#include <uniqueasset4.h>
+
 Product5Builder::Product5Builder()
     : IProductBuilder()
 {
@@ -16,6 +20,13 @@ bool Product5Builder::buildMenu(QMenuBar *menuBar)
 
 bool Product5Builder::registerFeatures(QMap<QString, IPLAsset *> &refMap)
 {
+    // Product_5 ships UniqueAsset1 + UniqueAsset3 + UniqueAsset4.
+    auto* asset1 = new UniqueAsset1();
+    auto* asset3 = new UniqueAsset3();
+    auto* asset4 = new UniqueAsset4();
+    refMap.insert(asset1->assetName(), asset1);
+    refMap.insert(asset3->assetName(), asset3);
+    refMap.insert(asset4->assetName(), asset4);
     return true;
 }
 

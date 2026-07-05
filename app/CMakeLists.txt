@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(${CMAKE_SOURCE_DIR}/cmake/ProductConfig.cmake)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets WebSockets Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
 
 # --------------------------------------------------------------------------
 # Sources
@@ -22,10 +22,10 @@ set(PROJECT_SOURCES
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
-    ProductLineAPI/productlineapi.h
-    ProductLineAPI/productlineapi.cpp
-    ProductLineAPI/WebSocketsAPI.h
-    ProductLineAPI/websocketsapi.cpp
+    ProductLineAPI/grpcapiserver.h
+    ProductLineAPI/grpcapiserver.cpp
+    ProductLineAPI/coreservice.h
+    ProductLineAPI/coreservice.cpp
 )
 
 # Product-specific builder source
@@ -63,7 +63,8 @@ else()
     if(ANDROID)
         add_library(XXProductLineApplication SHARED ${PROJECT_SOURCES})
     else()
-        add_executable(XXProductLineApplication ${PROJECT_SOURCES})
+        add_executable(XXProductLineApplication ${PROJECT_SOURCES}
+            ProductLineAPI/coreservice.cpp)
     endif()
 endif()
 
@@ -95,16 +96,14 @@ endforeach()
 
 target_link_libraries(XXProductLineApplication PRIVATE
     ${ASSET_LIBS}
+    pl_proto
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::Widgets
-    Qt${QT_VERSION_MAJOR}::WebSockets
-    Qt${QT_VERSION_MAJOR}::Network
 )
 
 # --------------------------------------------------------------------------
 # Include directories
-# ProductLineAPI/productlineapi.cpp includes "mainwindow.h" — add app/ root.
 # --------------------------------------------------------------------------
 target_include_directories(XXProductLineApplication PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
