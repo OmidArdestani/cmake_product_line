@@ -35,7 +35,13 @@ set(protobuf_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(protobuf_INSTALL OFF CACHE BOOL "" FORCE)
 set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "" FORCE)
 set(ABSL_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+# Build gRPC/protobuf/abseil as shared libs: asset libraries are SHARED and
+# all link the gRPC runtime — a static runtime would be duplicated in every
+# dylib and abort at startup with duplicate metric/descriptor registration.
+set(BUILD_SHARED_LIBS_SAVED ${BUILD_SHARED_LIBS})
+set(BUILD_SHARED_LIBS ON)
 add_subdirectory(external/grpc EXCLUDE_FROM_ALL)
+set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_SAVED})
 
 # --------------------------------------------------------------------------
 # GoogleTest (only when testing is enabled)

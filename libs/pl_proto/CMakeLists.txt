@@ -44,7 +44,10 @@ foreach(PROTO_FILE IN LISTS PROTO_FILES)
     list(APPEND GENERATED_SOURCES ${GEN})
 endforeach()
 
-add_library(pl_proto STATIC ${GENERATED_SOURCES})
+# SHARED is required: asset libraries are SHARED and each links pl_proto.
+# A static pl_proto would embed a copy of gRPC/absl globals into every
+# dylib, causing duplicate-registration aborts at process start.
+add_library(pl_proto SHARED ${GENERATED_SOURCES})
 
 target_include_directories(pl_proto PUBLIC ${PROTO_GEN_DIR})
 
