@@ -9,41 +9,72 @@
 
 - **Product Builder Design:** Implements a builder pattern for dynamically configuring product-specific features and menus.
 - **Shared Libraries:** Unique assets are implemented as shared libraries for modular development.
-- **Unit Testing:** Integrated unit tests for each unique asset using QtTest.
-- **Dual Build System Support:** Compatible with both CMake and QMake, providing flexibility for modern and legacy build systems.
-- **API Support:** Modular APIs for handling product-specific configurations.
+- **Unit Testing:** GoogleTest test suite covering all assets.
+- **CMake-only Build System:** Single CMake tree; QMake support removed.
+- **API Support:** Modular WebSocket-based APIs for product-specific configurations.
 
 ---
 
 ## Prerequisites
 
-- **Qt Framework:** Version 6.7.2 or higher.
+- **Qt Framework:** Version 6.7.2 or higher (Qt5 supported).
 - **CMake:** Version 3.16 or higher.
-- **GCC/MinGW or MSVC:** Ensure you have a C++17-compliant compiler.
+- **GCC/MinGW or MSVC:** C++17-compliant compiler.
+- **Git:** With submodule support (GoogleTest vendored under `external/gtest`).
+
+---
+
+## Getting Started
+
+```bash
+# Clone with submodules
+git clone --recurse-submodules https://github.com/<org>/cmake_product_line.git
+cd cmake_product_line
+
+# Configure for a specific product (default: Product_1)
+cmake -B build -DCURRENT_PRODUCT=Product_1
+
+# Build
+cmake --build build
+
+# Run tests
+ctest --test-dir build --output-on-failure
+
+# Launch the application
+./build/bin/XXProductLineApplication
+```
+
+Available product variants: `Product_1` … `Product_5`
 
 ---
 
 ## Folder Structure
 
 ```plaintext
-XXProductLine/
-├── XXProductLineApplication/  # Main application source code
-│   ├── main.cpp               # Entry point of the application
-│   ├── mainwindow.cpp         # Main window implementation
-│   └── mainwindow.h           # Main window header
-│   └── ProductLineAPI/        # API classes for different products
-│   └── ProductBuilder/        # Builder classes for different products
-│       ├── Product1Builder
-│       ├── Product2Builder
-│       ├── ...
-├── XXProductLineTests/      # Unit tests for unique assets
-│   ├── tst_uniqueasset1
-│   ├── tst_uniqueasset2
-│   └── ...
-├── SharedAssets/            # [Static Library]
-├── UniqueAsset1/            # [Shared Library] Implementation of UniqueAsset1
-├── UniqueAsset2/            # [Shared Library] Implementation of UniqueAsset2
-├── ...
+.
+├── app/                        # Qt GUI application (XXProductLineApplication)
+│   ├── main.cpp
+│   ├── mainwindow.{h,cpp,ui}
+│   ├── ProductBuilder/         # Product1Builder … Product5Builder (SPL variant selection)
+│   └── ProductLineAPI/         # WebSocket-based runtime API
+├── cmake/
+│   └── ProductConfig.cmake     # Maps CURRENT_PRODUCT → asset list + compile definitions
+├── docs/                       # Extended documentation
+├── external/
+│   └── gtest/                  # GoogleTest (git submodule)
+├── include/                    # Reserved for project-wide public headers
+├── libs/
+│   ├── pl_core/                # Static library: shared base (IPLAsset, SharedAssets)
+│   │   ├── include/pl_core/
+│   │   └── src/
+│   ├── unique_asset1/          # Shared library: UniqueAsset1
+│   │   ├── include/
+│   │   └── src/
+│   ├── unique_asset2/ … unique_asset4/   # Same structure
+└── tests/                      # GoogleTest suite (one file per library)
+    ├── test_pl_core.cpp
+    ├── test_unique_asset1.cpp … test_unique_asset4.cpp
+    └── CMakeLists.txt
 ```
 
 ---
@@ -110,7 +141,13 @@ int main(int argc, char *argv[])
 
 ## Unit Testing
 
-Unit tests are provided for each unique asset to ensure reliability and correctness. The tests are implemented using **QtTest**, a framework integrated with Qt for unit testing. The test cases are located in the `Tests/` directory. To verify functionality after changes, execute the tests using the `ctest` command.
+Unit tests cover each library using **GoogleTest** (vendored as a submodule at `external/gtest`).
+Tests are located in `tests/` and built automatically when `BUILD_TESTING=ON` (default).
+
+```bash
+cmake --build build --target XXProductLineTests
+ctest --test-dir build --output-on-failure
+```
 
 ---
 
