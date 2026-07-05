@@ -4,6 +4,10 @@ project(XXProductLineProject VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Always emit compile_commands.json so IntelliSense and clangd find
+# generated headers (protobuf/gRPC codegen under build/).
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # --------------------------------------------------------------------------
 # Output directories — shared libs and the app binary land in the same bin/
 # so the OS dynamic linker / Qt can find them at runtime without rpath trickery.
