@@ -1,20 +1,33 @@
 #pragma once
 
-#include <QObject>
-#include <functional>
-#include <QJsonObject>
+#include <QString>
 
+namespace grpc {
+class Service;
+}
 
-#define BIND_API_FUNC(function) std::bind(function, this, std::placeholders::_1)
-
-using APIFunctionMap = QMap<QString, std::function<QJsonObject (QJsonObject)>>;
-
+// Interface every unique asset implements.
+//
+// Each asset owns a typed gRPC service (defined in proto/unique_assetN.proto,
+// generated into pl_proto). The application registers asset services on its
+// gRPC server at startup.
+//
+// THREADING: gRPC handlers run on gRPC worker threads, NOT the Qt main
+// thread. Handlers touching QWidget/UI state must marshal through
+// QMetaObject::invokeMethod(target, ..., Qt::BlockingQueuedConnection).
 class IPLAsset{
 public:
+    virtual ~IPLAsset() = default;
+
     virtual void enableAsset(bool value) = 0;
     virtual bool isEnable() const = 0;
 
-    virtual APIFunctionMap getAPIFunctionMap() = 0;
+    // Stable identifier used by the core service (e.g. "UniqueAsset1").
+    virtual QString assetName() const = 0;
+
+    // The asset's gRPC service implementation. Owned by the asset;
+    // must outlive the running server.
+    virtual grpc::Service* grpcService() = 0;
 };
 
 

@@ -1,11 +1,18 @@
 #include "uniqueasset2.h"
 
-UniqueAsset2::UniqueAsset2() {}
+#include "uniqueasset2service.h"
 
-
-QJsonObject UniqueAsset2::runFeature(QJsonObject params)
+UniqueAsset2::UniqueAsset2()
+    : service(std::make_unique<UniqueAsset2Service>(this))
 {
-    return QJsonObject();
+}
+
+UniqueAsset2::~UniqueAsset2() = default;
+
+void UniqueAsset2::runFeature(const plapi::Asset2RunFeatureRequest& /*request*/,
+                              plapi::Asset2RunFeatureReply& reply)
+{
+    reply.mutable_status()->set_code(0);
 }
 
 void UniqueAsset2::exceptionFunction()
@@ -13,13 +20,7 @@ void UniqueAsset2::exceptionFunction()
     throw std::runtime_error("Error");
 }
 
-
-APIFunctionMap UniqueAsset2::getAPIFunctionMap()
+grpc::Service* UniqueAsset2::grpcService()
 {
-    APIFunctionMap apiFunctionMap;
-
-    apiFunctionMap.insert("runFeature", BIND_API_FUNC(&UniqueAsset2::runFeature));
-
-
-    return apiFunctionMap;
+    return service.get();
 }

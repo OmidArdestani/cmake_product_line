@@ -1,0 +1,45 @@
+// Core product-line service: asset discovery and lifecycle control.
+syntax = "proto3";
+
+package plapi;
+
+import "common.proto";
+
+// Describes one unique asset compiled into the running product.
+message AssetInfo {
+  string name = 1;   // e.g. "UniqueAsset1"
+  bool enabled = 2;
+}
+
+message ListAssetsRequest {}
+
+message ListAssetsReply {
+  Status status = 1;
+  string product = 2;            // e.g. "Product_1"
+  repeated AssetInfo assets = 3;
+}
+
+message EnableAssetRequest {
+  string name = 1;
+  bool enable = 2;
+}
+
+message EnableAssetReply {
+  Status status = 1;
+}
+
+message GetAssetStateRequest {
+  string name = 1;
+}
+
+message GetAssetStateReply {
+  Status status = 1;
+  AssetInfo asset = 2;
+}
+
+// Root service exposed by every product variant.
+service ProductLineCore {
+  rpc ListAssets(ListAssetsRequest) returns (ListAssetsReply);
+  rpc EnableAsset(EnableAssetRequest) returns (EnableAssetReply);
+  rpc GetAssetState(GetAssetStateRequest) returns (GetAssetStateReply);
+}

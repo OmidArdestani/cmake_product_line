@@ -17,6 +17,7 @@ add_executable(XXProductLineTests
     test_unique_asset2.cpp
     test_unique_asset3.cpp
     test_unique_asset4.cpp
+    test_grpc_api.cpp
 )
 
 target_link_libraries(XXProductLineTests PRIVATE
@@ -25,6 +26,7 @@ target_link_libraries(XXProductLineTests PRIVATE
     UniqueAsset2
     UniqueAsset3
     UniqueAsset4
+    pl_proto
     Qt${QT_VERSION_MAJOR}::Core
 )
 
@@ -33,4 +35,6 @@ set_target_properties(XXProductLineTests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
 
-gtest_discover_tests(XXProductLineTests)
+# PRE_TEST: discovery runs at ctest time, not as POST_BUILD step —
+# avoids deleting the binary when discovery hiccups and keeps builds green.
+gtest_discover_tests(XXProductLineTests DISCOVERY_MODE PRE_TEST)

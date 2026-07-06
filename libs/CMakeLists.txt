@@ -1,3 +1,4 @@
+add_subdirectory(pl_proto)
 add_subdirectory(pl_core)
 add_subdirectory(unique_asset1)
 add_subdirectory(unique_asset2)

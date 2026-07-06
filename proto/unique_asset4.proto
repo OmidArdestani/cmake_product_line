@@ -1,0 +1,18 @@
+// UniqueAsset4 service contract.
+syntax = "proto3";
+
+package plapi;
+
+import "common.proto";
+
+message Asset4RunFeatureRequest {
+  repeated Param params = 1;
+}
+
+message Asset4RunFeatureReply {
+  Status status = 1;
+}
+
+service UniqueAsset4Service {
+  rpc RunFeature(Asset4RunFeatureRequest) returns (Asset4RunFeatureReply);
+}
