@@ -63,8 +63,7 @@ else()
     if(ANDROID)
         add_library(XXProductLineApplication SHARED ${PROJECT_SOURCES})
     else()
-        add_executable(XXProductLineApplication ${PROJECT_SOURCES}
-            ProductLineAPI/coreservice.cpp)
+        add_executable(XXProductLineApplication ${PROJECT_SOURCES})
     endif()
 endif()
 
