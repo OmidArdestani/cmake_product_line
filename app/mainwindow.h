@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <pl_core/sharedassets.h>
 #include <ProductBuilder/IProductBuilder.h>
-#include "ProductLineAPI/productlineapi.h"
+#include "ProductLineAPI/grpcapiserver.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -12,11 +12,9 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
-class MainWindow : public QMainWindow, public IPLAsset
+class MainWindow : public QMainWindow
 {
     Q_OBJECT
-
-    friend ProductLineAPI;
 
 public:
     MainWindow(QWidget *parent = nullptr);
@@ -28,20 +26,10 @@ private slots:
 private:
     void buildProduct();
 
-    // API Functions
-private:
-    QJsonObject getFeature1(QJsonObject);
-
 private:
     Ui::MainWindow *ui;
     IProductBuilder* productBuilder{ nullptr };
-    ProductLineAPI   productLineAPI;
+    GrpcApiServer    apiServer;
     QMap<QString, IPLAsset*> productAssetMap{};
-
-    // IPLAsset interface
-public:
-    void enableAsset(bool value) override{}
-    bool isEnable() const override {return true;}
-    APIFunctionMap getAPIFunctionMap() override;
 };
 #endif // MAINWINDOW_H

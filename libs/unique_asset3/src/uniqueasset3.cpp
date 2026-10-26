@@ -1,10 +1,18 @@
 #include "uniqueasset3.h"
 
-UniqueAsset3::UniqueAsset3() {}
+#include "uniqueasset3service.h"
 
-QJsonObject UniqueAsset3::runFeature(QJsonObject params)
+UniqueAsset3::UniqueAsset3()
+    : service(std::make_unique<UniqueAsset3Service>(this))
 {
-    return QJsonObject();
+}
+
+UniqueAsset3::~UniqueAsset3() = default;
+
+void UniqueAsset3::runFeature(const plapi::Asset3RunFeatureRequest& /*request*/,
+                              plapi::Asset3RunFeatureReply& reply)
+{
+    reply.mutable_status()->set_code(0);
 }
 
 void UniqueAsset3::exceptionFunction()
@@ -12,13 +20,7 @@ void UniqueAsset3::exceptionFunction()
     throw std::runtime_error("Error");
 }
 
-
-APIFunctionMap UniqueAsset3::getAPIFunctionMap()
+grpc::Service* UniqueAsset3::grpcService()
 {
-    APIFunctionMap apiFunctionMap;
-
-    apiFunctionMap.insert("runFeature", BIND_API_FUNC(&UniqueAsset3::runFeature));
-
-
-    return apiFunctionMap;
+    return service.get();
 }

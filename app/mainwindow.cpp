@@ -24,7 +24,6 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , productLineAPI(this)
 {
     ui->setupUi(this);
 
@@ -61,45 +60,22 @@ void MainWindow::buildProduct()
     productBuilder->registerFeatures(productAssetMap);
     productBuilder->buildMenu(menuBar());
     productBuilder->decorate(this->centralWidget());
-}
 
-QJsonObject MainWindow::getFeature1(QJsonObject)
-{
-    auto feature = productAssetMap.value("feature1");
-    if(feature)
-    {
-        quint64 instanceId = reinterpret_cast<quintptr>(feature);
-        productLineAPI.insertInstance(instanceId, feature);
-        return QJsonObject{
-            {"instanceId", QString::number(instanceId)},
-            {"error", ""}
-        };
-    }
-
-    return QJsonObject{
-        {"error", "This feature is not exist!"}
-    };
-}
-
-APIFunctionMap MainWindow::getAPIFunctionMap()
-{
-    APIFunctionMap apiFunctionMap;
-
-    apiFunctionMap.insert("getFeature1", BIND_API_FUNC(&MainWindow::getFeature1));
-
-    return apiFunctionMap;
+    // Expose every asset of the active product over gRPC.
+    for (auto* asset : productAssetMap)
+        apiServer.registerAsset(asset);
 }
 
 void MainWindow::on_actionRun_API_triggered()
 {
     if(ui->actionRun_API->text().toLower() == "run")
     {
-        productLineAPI.start();
-        ui->actionRun_API->setText("Stop");
+        if (apiServer.start())
+            ui->actionRun_API->setText("Stop");
     }
     else
     {
-        productLineAPI.stop();
+        apiServer.stop();
         ui->actionRun_API->setText("Run");
     }
 }

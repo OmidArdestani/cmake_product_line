@@ -1,10 +1,18 @@
 #include "uniqueasset4.h"
 
-UniqueAsset4::UniqueAsset4() {}
+#include "uniqueasset4service.h"
 
-QJsonObject UniqueAsset4::runFeature(QJsonObject params)
+UniqueAsset4::UniqueAsset4()
+    : service(std::make_unique<UniqueAsset4Service>(this))
 {
-    return QJsonObject();
+}
+
+UniqueAsset4::~UniqueAsset4() = default;
+
+void UniqueAsset4::runFeature(const plapi::Asset4RunFeatureRequest& /*request*/,
+                              plapi::Asset4RunFeatureReply& reply)
+{
+    reply.mutable_status()->set_code(0);
 }
 
 void UniqueAsset4::exceptionFunction()
@@ -12,13 +20,7 @@ void UniqueAsset4::exceptionFunction()
     throw std::runtime_error("Error");
 }
 
-
-APIFunctionMap UniqueAsset4::getAPIFunctionMap()
+grpc::Service* UniqueAsset4::grpcService()
 {
-    APIFunctionMap apiFunctionMap;
-
-    apiFunctionMap.insert("runFeature", BIND_API_FUNC(&UniqueAsset4::runFeature));
-
-
-    return apiFunctionMap;
+    return service.get();
 }

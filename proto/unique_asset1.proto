@@ -1,0 +1,21 @@
+// UniqueAsset1 service contract.
+// Owns its own request/reply types so the asset API can evolve independently.
+syntax = "proto3";
+
+package plapi;
+
+import "common.proto";
+
+message Asset1RunFeatureRequest {
+  repeated Param params = 1;
+}
+
+message Asset1RunFeatureReply {
+  Status status = 1;
+  string date_time = 2;             // server timestamp (ISO 8601)
+  repeated Param loopback = 3;      // echo of the request params
+}
+
+service UniqueAsset1Service {
+  rpc RunFeature(Asset1RunFeatureRequest) returns (Asset1RunFeatureReply);
+}

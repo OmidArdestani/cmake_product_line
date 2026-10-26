@@ -1,14 +1,27 @@
 #include "uniqueasset1.h"
 
-UniqueAsset1::UniqueAsset1() {}
+#include "uniqueasset1service.h"
 
-QJsonObject UniqueAsset1::runFeature(QJsonObject params)
+#include <QDateTime>
+
+UniqueAsset1::UniqueAsset1()
+    : service(std::make_unique<UniqueAsset1Service>(this))
 {
-    return QJsonObject{
-        {"dateTime", QDateTime::currentDateTime().toString()},
-        {"error", ""},
-        {"loopback", params}
-    };
+}
+
+UniqueAsset1::~UniqueAsset1() = default;
+
+void UniqueAsset1::runFeature(const plapi::Asset1RunFeatureRequest& request,
+                              plapi::Asset1RunFeatureReply& reply)
+{
+    reply.mutable_status()->set_code(0);
+    reply.set_date_time(QDateTime::currentDateTime().toString(Qt::ISODate).toStdString());
+
+    // Echo request params back to the caller.
+    for (const auto& param : request.params())
+    {
+        *reply.add_loopback() = param;
+    }
 }
 
 void UniqueAsset1::exceptionFunction()
@@ -16,12 +29,7 @@ void UniqueAsset1::exceptionFunction()
     throw std::runtime_error("Error");
 }
 
-APIFunctionMap UniqueAsset1::getAPIFunctionMap()
+grpc::Service* UniqueAsset1::grpcService()
 {
-    APIFunctionMap apiFunctionMap;
-
-    apiFunctionMap.insert("runFeature", BIND_API_FUNC(&UniqueAsset1::runFeature));
-
-
-    return apiFunctionMap;
+    return service.get();
 }
