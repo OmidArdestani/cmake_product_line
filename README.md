@@ -68,7 +68,7 @@ Available product variants: `Product_1` … `Product_5`
 ├── include/                    # Reserved for project-wide public headers
 ├── proto/                      # API contracts (.proto): common, pl_core, unique_asset1…4
 ├── libs/
-│   ├── pl_proto/               # Static library: generated protobuf/gRPC code for all contracts
+│   ├── pl_proto/               # Shared library: generated protobuf/gRPC code for all contracts
 │   ├── pl_core/                # Static library: shared base (IPLAsset, SharedAssets)
 │   │   ├── include/pl_core/
 │   │   └── src/
