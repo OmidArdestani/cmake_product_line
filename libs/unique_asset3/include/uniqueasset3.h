@@ -4,6 +4,7 @@
 
 #include <pl_core/sharedassets.h>
 #include <memory>
+#include <atomic>
 
 namespace plapi {
 class Asset3RunFeatureRequest;
@@ -32,7 +33,8 @@ public:
     grpc::Service* grpcService() override;
 
 private:
-    bool enable{false};
+    // Shared by GUI commands and gRPC worker threads.
+    std::atomic_bool enable{false};
     std::unique_ptr<UniqueAsset3Service> service;
 };
 

@@ -1,5 +1,12 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "Menus/ApplicationMenus.h"
+#include "Menus/WindowMenus.h"
+#include "Tools/ToolController.h"
+#include <QDebug>
+#include <QEvent>
+#include <QStatusBar>
+#include <stdexcept>
 
 #ifdef Product_1
 #include "ProductBuilder/Product1Builder.h"
@@ -21,62 +28,78 @@
 #include "ProductBuilder/Product5Builder.h"
 #endif
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget *parent, quint16 apiPort)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , apiServer(apiPort)
 {
     ui->setupUi(this);
 
     buildProduct();
+    buildMenus();
 }
 
 MainWindow::~MainWindow()
 {
+    // Stop workers before releasing their services and facilities.
+    apiServer.stop();
+    tools.reset();
+    menus.reset();
+    qDeleteAll(productAssetMap);
     delete ui;
 }
 
 void MainWindow::buildProduct()
 {
 #ifdef Product_1
-    productBuilder = new Product1Builder();
+    productBuilder = std::make_unique<Product1Builder>();
 #endif
 
 #ifdef Product_2
-    productBuilder = new Product2Builder();
+    productBuilder = std::make_unique<Product2Builder>();
 #endif
 
 #ifdef Product_3
-    productBuilder = new Product3Builder();
+    productBuilder = std::make_unique<Product3Builder>();
 #endif
 
 #ifdef Product_4
-    productBuilder = new Product4Builder();
+    productBuilder = std::make_unique<Product4Builder>();
 #endif
 
 #ifdef Product_5
-    productBuilder = new Product5Builder();
+    productBuilder = std::make_unique<Product5Builder>();
 #endif
 
     productBuilder->registerFeatures(productAssetMap);
-    productBuilder->buildMenu(menuBar());
-    productBuilder->decorate(this->centralWidget());
 
     // Expose every asset of the active product over gRPC.
     for (auto* asset : productAssetMap)
         apiServer.registerAsset(asset);
 }
 
-void MainWindow::on_actionRun_API_triggered()
+void MainWindow::buildMenus()
 {
-    if(ui->actionRun_API->text().toLower() == "run")
-    {
-        if (apiServer.start())
-            ui->actionRun_API->setText("Stop");
-    }
-    else
-    {
-        apiServer.stop();
-        ui->actionRun_API->setText("Run");
-    }
+    menus = std::make_unique<pl::gui::MenuRegistry>(menuBar());
+    tools = std::make_unique<app::ToolController>(*menus, icons, apiServer, productAssetMap,
+        [this](const QString& message, bool error) {
+            statusBar()->showMessage(message, error ? 15000 : 5000);
+            if (error)
+                qWarning().noquote() << message;
+            else
+                qInfo().noquote() << message;
+        });
+    if (!app::registerApplicationIcons(icons) || !app::registerApplicationMenus(*menus, icons, *tools)
+        || !app::registerWindowMenus(*menus, *this))
+        throw std::logic_error("Application menu registration failed");
 }
 
+void MainWindow::changeEvent(QEvent* event)
+{
+    QMainWindow::changeEvent(event);
+    if (event->type() == QEvent::LanguageChange && menus && tools) {
+        ui->retranslateUi(this);
+        menus->retranslate();
+        tools->syncApi();
+    }
+}

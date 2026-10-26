@@ -21,3 +21,6 @@ set_target_properties(pl_core PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
 )
+
+# Independent GUI infrastructure: facilities can keep linking only pl_core.
+add_subdirectory(MenuSystem)

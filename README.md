@@ -7,7 +7,8 @@
 
 ## Features
 
-- **Product Builder Design:** Implements a builder pattern for dynamically configuring product-specific features and menus.
+- **Product Builder Design:** Composes each product's facilities; menu definitions and GUI-to-facility wiring live in the application.
+- **Shared Qt Menu System:** `pl_core_gui` provides enum-based menus and cached PNG-atlas/SVG icons; application tool controllers connect GUI commands to facilities. See [menu and icon guide](docs/menu-system.md).
 - **Shared Libraries:** Unique assets are implemented as shared libraries for modular development.
 - **Unit Testing:** GoogleTest test suite covering all assets, including gRPC integration tests.
 - **CMake-only Build System:** Single CMake tree; QMake support removed.
@@ -17,7 +18,7 @@
 
 ## Prerequisites
 
-- **Qt Framework:** Version 6.7.2 or higher (Qt5 supported).
+- **Qt Framework:** Version 6.7.2 or higher (Qt5-compatible APIs), including Widgets, Network, WebSockets, and SVG.
 - **CMake:** Version 3.16 or higher.
 - **GCC/MinGW or MSVC:** C++17-compliant compiler.
 - **Git:** With submodule support. Vendored submodules:

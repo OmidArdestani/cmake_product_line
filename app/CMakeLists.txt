@@ -22,6 +22,14 @@ set(PROJECT_SOURCES
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    Menus/MenuIds.h
+    Menus/ApplicationMenus.h
+    Menus/ApplicationMenus.cpp
+    Menus/WindowMenus.h
+    Menus/WindowMenus.cpp
+    Tools/ToolController.h
+    Tools/ToolController.cpp
+    resources/icons.qrc
     ProductLineAPI/grpcapiserver.h
     ProductLineAPI/grpcapiserver.cpp
     ProductLineAPI/coreservice.h
@@ -96,6 +104,7 @@ endforeach()
 target_link_libraries(XXProductLineApplication PRIVATE
     ${ASSET_LIBS}
     pl_proto
+    pl_core_gui
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::Widgets

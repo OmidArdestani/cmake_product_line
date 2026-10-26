@@ -1,17 +1,12 @@
-#include <QMenuBar>
-#include <QObject>
-#include <pl_core/sharedassets.h>
-
 #pragma once
 
-class IProductBuilder : public QObject{
+#include <QMap>
+#include <pl_core/sharedassets.h>
 
+// Product composition only. Menus and tool handlers belong to the application.
+class IProductBuilder
+{
 public:
-    IProductBuilder():QObject(nullptr){}
-
     virtual ~IProductBuilder() = default;
-
-    virtual bool buildMenu(QMenuBar* menuBar) = 0;
-    virtual bool registerFeatures(QMap<QString, IPLAsset*>& refMap) = 0;
-    virtual bool decorate(QWidget* mainWidget) = 0;
+    virtual bool registerFeatures(QMap<QString, IPLAsset*>& assets) = 0;
 };

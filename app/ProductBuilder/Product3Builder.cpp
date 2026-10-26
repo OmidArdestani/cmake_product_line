@@ -4,20 +4,6 @@
 #include <uniqueasset3.h>
 #include <uniqueasset4.h>
 
-Product3Builder::Product3Builder()
-    : IProductBuilder()
-{
-
-}
-
-bool Product3Builder::buildMenu(QMenuBar *menuBar)
-{
-    QMenu *product3Menu = menuBar->addMenu("Product 3");
-    product3Menu->addAction("Action 1 for Product 3", this, SLOT(onProduct3MenuActionTriggered()));
-    product3Menu->addAction("Action 2 for Product 3", this, SLOT(onProduct3MenuActionTriggered()));
-    return true;
-}
-
 bool Product3Builder::registerFeatures(QMap<QString, IPLAsset *> &refMap)
 {
     // Product_3 ships UniqueAsset2 + UniqueAsset3 + UniqueAsset4.
@@ -28,20 +14,4 @@ bool Product3Builder::registerFeatures(QMap<QString, IPLAsset *> &refMap)
     refMap.insert(asset3->assetName(), asset3);
     refMap.insert(asset4->assetName(), asset4);
     return true;
-}
-
-bool Product3Builder::decorate(QWidget *mainWidget)
-{
-    return true;
-}
-
-void Product3Builder::onProduct3MenuActionTriggered()
-{
-    QAction *action = qobject_cast<QAction *>(sender());
-    if (action)
-    {
-        QString actionText = action->text();
-        qDebug() << "Triggered action for Product 1: " << actionText;
-        // You can now use the actionText as needed
-    }
 }

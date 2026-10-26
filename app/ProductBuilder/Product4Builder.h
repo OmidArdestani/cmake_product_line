@@ -1,19 +1,9 @@
-#include "IProductBuilder.h"
-
 #pragma once
 
+#include "IProductBuilder.h"
 
-class Product4Builder : public IProductBuilder{
-    Q_OBJECT
+class Product4Builder : public IProductBuilder
+{
 public:
-    explicit Product4Builder();
-
-    // IProductBuilder interface
-public:
-    bool buildMenu(QMenuBar *menuBar) override;
-    bool registerFeatures(QMap<QString, IPLAsset *> &refMap) override;
-    bool decorate(QWidget *mainWidget) override;
-
-private slots:
-    void onProduct4MenuActionTriggered();
+    bool registerFeatures(QMap<QString, IPLAsset*>& assets) override;
 };

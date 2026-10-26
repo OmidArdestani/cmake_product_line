@@ -38,3 +38,45 @@ set_target_properties(XXProductLineTests PROPERTIES
 # PRE_TEST: discovery runs at ctest time, not as POST_BUILD step —
 # avoids deleting the binary when discovery hiccups and keeps builds green.
 gtest_discover_tests(XXProductLineTests DISCOVERY_MODE PRE_TEST)
+
+# GUI tests have their own QApplication and don't add Widgets to facility tests.
+add_executable(MenuSystemTests gui_test_main.cpp test_menu_system.cpp)
+target_link_libraries(MenuSystemTests PRIVATE GTest::gtest pl_core_gui)
+gtest_discover_tests(MenuSystemTests DISCOVERY_MODE PRE_TEST TEST_PREFIX "MenuSystem.")
+
+# Compile the actual window, controllers and selected builder for every product.
+# Function scope keeps each ProductConfig selection out of the app configuration.
+function(add_product_menu_tests product)
+    set(CURRENT_PRODUCT ${product})
+    include(${CMAKE_SOURCE_DIR}/cmake/ProductConfig.cmake)
+    string(REPLACE "Product_" "" product_number ${product})
+    set(target ${product}MenuTests)
+    add_executable(${target}
+        gui_test_main.cpp
+        test_product_menus.cpp
+        ${CMAKE_SOURCE_DIR}/app/mainwindow.h
+        ${CMAKE_SOURCE_DIR}/app/mainwindow.cpp
+        ${CMAKE_SOURCE_DIR}/app/mainwindow.ui
+        ${CMAKE_SOURCE_DIR}/app/Menus/ApplicationMenus.cpp
+        ${CMAKE_SOURCE_DIR}/app/Menus/WindowMenus.cpp
+        ${CMAKE_SOURCE_DIR}/app/Tools/ToolController.cpp
+        ${CMAKE_SOURCE_DIR}/app/ProductBuilder/Product${product_number}Builder.cpp
+        ${CMAKE_SOURCE_DIR}/app/ProductLineAPI/grpcapiserver.cpp
+        ${CMAKE_SOURCE_DIR}/app/ProductLineAPI/coreservice.cpp
+        ${CMAKE_SOURCE_DIR}/app/resources/icons.qrc
+    )
+    set_target_properties(${target} PROPERTIES AUTOUIC ON AUTORCC ON)
+    target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/app)
+    target_compile_definitions(${target} PRIVATE ${product} ${PRODUCT_ASSETS})
+    target_link_libraries(${target} PRIVATE GTest::gtest pl_core pl_core_gui pl_proto
+        Qt${QT_VERSION_MAJOR}::Network)
+    foreach(asset IN LISTS PRODUCT_ASSETS)
+        string(REPLACE "UAsset" "UniqueAsset" asset_target ${asset})
+        target_link_libraries(${target} PRIVATE ${asset_target})
+    endforeach()
+    gtest_discover_tests(${target} DISCOVERY_MODE PRE_TEST TEST_PREFIX "${product}.")
+endfunction()
+
+foreach(product_number RANGE 1 5)
+    add_product_menu_tests(Product_${product_number})
+endforeach()
