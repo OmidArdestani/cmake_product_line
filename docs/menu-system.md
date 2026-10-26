@@ -1,202 +1,219 @@
-# Menus, tools, and icons
+# One definition, menu and toolbar
 
-The GUI uses Qt `QMenuBar`, `QMenu`, and `QAction`. Shared infrastructure lives in
-`libs/pl_core/MenuSystem`, built as the independent `pl_core_gui` target. It does
-not link product facilities, protobuf, or gRPC. Facility consumers can continue
-linking `pl_core` without depending on Qt Widgets or Qt SVG.
+Define each tool once. `MenuSystem` builds its menu item and toolbar button using
+**the same QAction**, so its handler, icon, tooltip, enabled state and checked state
+stay synchronized. Groups and tools appear in the order of the definition list.
 
-Application responsibilities are split between:
+## The three application files
 
-- `app/Menus`: application/product IDs, layouts, translated labels, and icon mappings.
-- `app/Tools`: GUI commands that call facilities and report results.
-- `app/ProductBuilder`: selection and construction of facilities only.
+| File | What to edit |
+|---|---|
+| `app/Menus/MenuIds.h` | The `MenuId`, `ToolId`, and `IconId` enums |
+| `app/Menus/ApplicationIcons.cpp` | Map each icon ID to SVG, PNG, or a PNG-sheet cell |
+| `app/Menus/ApplicationMenus.cpp` | The ordered groups and tools, with application callbacks |
 
-Facility libraries expose APIs and never register menus or refer to menu IDs.
-The path from a click is `QAction -> ToolController -> facility API -> GUI result`.
+`MainWindow::buildMenus()` registers icons and calls `menus->build(...)` once.
+You do **not** add a second toolbar entry or construct QMenu/QAction/QToolButton
+objects in the application. The former `WindowMenus` construction path is removed.
 
-## Current layout
+## Add one tool to an existing group
 
-```text
-Tools
-├── API
-│   ├── Run / Stop
-│   └── Settings… (disabled placeholder)
-└── Product N
-    └── UniqueAssetX (one submenu per facility shipped in this product)
-        ├── Enabled (checkable)
-        └── Run feature
-```
-
-File and Edit are registered extension points but hidden until they have content.
-Run feature becomes available when its facility is enabled. The sample facilities
-accept an empty request; completion/errors appear in the status bar. Enabling a
-facility also changes the state exposed by gRPC. The enable flag is atomic because
-the GUI and gRPC workers share it. A menu refreshes facility state when opened,
-and the handler checks state again before execution. This does not cancel a
-facility call already in progress.
-
-API Run/Stop uses `GrpcApiServer::isRunning()`, never the action label. A start
-failure keeps Run available and reports the error. The window stops the server
-before destroying controllers, actions, or facilities.
-
-## Add a menu and command
-
-IDs combine a stable module namespace and an explicitly numbered scoped enum.
-Use one menu enum, one action enum, and one icon enum per namespace. `MenuKey`,
-`ActionKey`, and `IconKey` are distinct types. Values may repeat in different
-namespaces; duplicates within the same namespace/category are rejected. Do not
-renumber IDs when changing labels or ordering.
+1. Add a new value to `ToolId` (for example `ExportReport = 500`).
+2. Register an icon if the tool needs new artwork, or reuse an existing `IconId`.
+3. Add this entry to the desired group's `tools` list in `ApplicationMenus.cpp`:
 
 ```cpp
-#include <MenuSystem/MenuRegistry.h>
-
-enum class ReportMenu { Reports = 1 };
-enum class ReportAction { Export = 1 };
-
-const pl::gui::MenuKey reports{"product.reports", ReportMenu::Reports};
-const pl::gui::ActionKey exportReport{"product.reports", ReportAction::Export};
-
-// Register parents before children. std::nullopt means a top-level menu.
-menus.addMenu({reports, app::menuKey(app::MenuId::Tools),
-    {"Reports", QT_TRANSLATE_NOOP("Reports", "Reports")}, 50});
-
-pl::gui::ActionDefinition command;
-command.id = exportReport;
-command.text = {"Reports", QT_TRANSLATE_NOOP("Reports", "Export…")};
-command.order = 10;
-command.icon = icons.icon(exportIconKey);
-command.shortcut = QKeySequence(Qt::CTRL | Qt::Key_E);
-
-// controller is a QObject. Capture only objects that outlive it.
-// UI input collection and facility calls belong to this application controller.
-menus.addAction(reports, command, controller, [controller](bool) {
-    controller->exportReport();
-});
+{ToolId::ExportReport,
+ text(QT_TRANSLATE_NOOP("ApplicationMenus", "Export report")),
+ IconId::Run,
+ text(QT_TRANSLATE_NOOP("ApplicationMenus", "Export the current report")),
+ [&window](bool) {
+     // Replace this demonstration callback with the application's facility call.
+     window.statusBar()->showMessage(QStringLiteral("Export clicked"));
+ }}
 ```
 
-Check boolean return values during application registration. Invalid IDs,
-unknown parents, duplicate definitions, and missing handler contexts are rejected
-without adding a partial command. Integer `order` values control placement; equal
-values retain registration order. Separators have their own order:
+That entry produces both a menu item and an icon button. The callback runs once
+whether the menu or toolbar is used. The `bool` argument is the checked state for
+checkable tools; other handlers can ignore it. No second registration is required.
+
+## Add a whole group
+
+Add `Reports = 200` to `MenuId` and `ExportReport = 500` to `ToolId`, then insert
+this group into the `ui` list before it is returned:
 
 ```cpp
-menus.addSeparator(reports, 20);
-menus.action(exportReport)->setEnabled(canExport);
-menus.action(exportReport)->setVisible(showExport);
-menus.setMenuVisible(reports, showReports);
+ui.append({MenuId::Reports,
+    text(QT_TRANSLATE_NOOP("ApplicationMenus", "Reports")), {
+        {ToolId::ExportReport,
+         text(QT_TRANSLATE_NOOP("ApplicationMenus", "Export report")),
+         IconId::Run,
+         text(QT_TRANSLATE_NOOP("ApplicationMenus", "Export the current report")),
+         [&window](bool) {
+             window.statusBar()->showMessage(QStringLiteral("Export clicked"));
+         }}
+    }});
 ```
 
-Empty menus and their empty ancestors hide automatically; separators do not count
-as content. Disabled but visible actions still count. Use `setMenuVisible` for
-explicit menu visibility so automatic empty-menu handling respects that choice.
-Qt collapses redundant separators.
+The group becomes a top-level **Reports** menu and a section in the horizontal
+icon toolbar. Toolbar sections are separated automatically. Appending adds it to
+the end; inserting earlier changes its position. Enum values are identity, not
+ordering: give IDs stable, explicit values and reorder the list instead.
 
-`attachAction(otherMenu, exportReport, order)` reuses the same action in another
-menu. Its checked/enabled state and handler are shared. The returned `QAction*`
-also works in a toolbar or context menu; the registry remains its owner. Do not
-manually reparent registry-owned objects. Destroying the handler context disables
-its commands and disconnects callbacks. All registry operations use the GUI thread.
+## Tool options
 
-`MenuRegistry::retranslate()` resolves each definition's translation context and
-source string again. `MainWindow` calls it on `LanguageChange`, then refreshes the
-dynamic API Run/Stop label. Future dynamic labels should likewise be refreshed
-by their application controller after retranslation.
-
-## Select an icon from a PNG sheet
-
-A PNG atlas contains raster cells. Register cell dimensions and margins/gaps once;
-individual sources require only a filename, zero-based row, and zero-based column.
-Qt resource paths (`:/...`) and filesystem paths both work.
+The five common fields, in order, are:
 
 ```cpp
-#include <MenuSystem/Icons/IconProvider.h>
+Tool { id, title, iconId, tooltip, execute }
+```
 
-enum class ReportIcon { Export = 1 };
-const pl::gui::IconKey exportIconKey{"product.reports", ReportIcon::Export};
+Set optional fields when necessary:
 
+```cpp
+Tool tool{ToolId::ExportReport, text("Export report"), IconId::Run,
+          text("Export the current report"), exportHandler};
+tool.shortcut = QKeySequence(Qt::CTRL | Qt::Key_E);
+tool.enabled = canExport;
+tool.checkable = true;
+tool.checked = false;
+tool.separatorBefore = true; // separator inside the menu
+```
+
+Both displays are the default. For a command such as Exit, About, or Show Toolbar
+that belongs only in a menu, use `ToolPlacement::MenuOnly`. The application has a
+small `menuOnly(tool, shortcut)` helper for these declarations. There is no
+independent toolbar command list.
+
+An absent icon (`{}`) falls back to a text button. An enabled tool needs a callback;
+a disabled placeholder may omit one. Duplicate group/tool IDs and parents declared
+after their children are rejected before UI creation. Build the definition once;
+update live state by enum afterward:
+
+```cpp
+menus.action(ToolId::ExportReport)->setEnabled(canExport);
+menus.action(ToolId::ExportReport)->setChecked(selected);
+menus.action(ToolId::ExportReport)->setVisible(showExport);
+menus.action(ToolId::ExportReport)->setIcon(menus.icon(IconId::Run));
+```
+
+Both displays update together. Empty menus and redundant toolbar group separators
+hide automatically. A disabled but visible tool still counts as menu content.
+
+## Group options and lifetime
+
+A group contains an ID, title and tools. Its optional `context` is the QObject
+that owns its callbacks' lifetime; the default is the application window. Facility
+groups use the application `ToolController` as their context. Destroying that
+context disconnects and disables the commands. Captured facilities must outlive
+that context. Keep definitions and all menu/icon operations on the GUI thread.
+
+`onOpen` optionally refreshes state when a menu opens. `parent` optionally names
+an earlier group to create a submenu. Omit `parent` for a top-level group. Nested
+groups still contribute their toolbar sections in definition order.
+
+The generic type is `pl::gui::MenuSystem<MenuId, ToolId, IconId>`.
+`ApplicationMenuSystem`, `Tool`, `MenuGroup` and `UiDefinition` are application
+aliases declared beside the enums. The underlying registry and icon loader remain
+in `libs/pl_core/MenuSystem` and the separate `pl_core_gui` target. Facilities
+still depend only on their core APIs; the generic GUI library knows nothing about
+product IDs, assets, protobuf, or gRPC.
+
+## Register PNG-sheet icons
+
+In `ApplicationIcons.cpp`, register the geometry once and choose each icon by
+filename, **zero-based row**, and **zero-based column**:
+
+```cpp
 pl::gui::IconSheet sheet;
 sheet.cellSize = QSize(24, 24);
-sheet.margins = QMargins(0, 0, 0, 0); // defaults to zero
-sheet.spacing = QSize(0, 0);         // defaults to zero
-sheet.highDpiFiles.insert(2, ":/icons/reports@2x.png"); // optional
-icons.registerSheet(":/icons/reports.png", sheet);
+sheet.margins = QMargins(0, 0, 0, 0); // optional, defaults to zero
+sheet.spacing = QSize(0, 0);         // optional, defaults to zero
+sheet.highDpiFiles.insert(2, ":/icons/tools@2x.png"); // optional
+menus.registerSheet(":/icons/tools.png", sheet);
 
-icons.registerIcon(exportIconKey,
-    pl::gui::IconSource::sprite(":/icons/reports.png", 1, 3));
-command.icon = icons.icon(exportIconKey); // ordinary QIcon
+menus.registerIcon(IconId::Run,
+    pl::gui::IconSource::sprite(":/icons/tools.png", 1, 3));
 ```
 
-At 2x, the entire sheet, including margins and spacing, must be exactly twice the
-base dimensions. Cropped pixmaps receive the matching device pixel ratio. The
-provider explicitly crops each supplied resolution; it does not rely on QIcon
-automatically cropping sheets. Supply higher-resolution PNGs for high-DPI detail.
-
-The usable image area must contain whole cells separated by the declared spacing.
-Invalid geometry, missing files, and out-of-range cells produce a warning and an
-empty icon. A bad optional high-DPI sheet falls back to the valid base sheet.
-Transparency is preserved. Missing icons do not prevent commands from working.
-
-Sheets load once per provider. Named icons are lazily constructed and cached.
-`clearCache()` reloads artwork on the next request; reassign refreshed icons to
-existing QActions if their artwork changed. `fromSource(IconSource::sprite(...))`
-supports one-off icons without an ID; sheet data is still cached.
-
-## SVG, individual PNG, and custom states
-
-Application artwork is packaged in `app/resources/icons.qrc`. Included SVG icons
-are project-owned vector drawings. Individual SVGs retain their scalable icon
-engine; switching a named icon from an atlas to SVG leaves menu definitions alone:
+Add bundled artwork to `app/resources/icons.qrc`. Filesystem paths work too.
+For a standalone PNG/SVG or an existing QIcon:
 
 ```cpp
-icons.registerIcon(exportIconKey,
-    pl::gui::IconSource::file(":/icons/export.svg"));
-// Individual PNGs work with file() too.
-// Ready-made QIcons use IconSource::fromIcon(existingIcon).
+menus.registerIcon(IconId::Run,
+    pl::gui::IconSource::file(":/icons/run.svg"));
+// Or: IconSource::fromIcon(existingQIcon)
 ```
 
-Registrations are immutable: choose one mapping per icon ID at startup. For
-distinct disabled or checked artwork, register variants:
+Choose one registration for each icon ID. Changing the file or sheet coordinates
+in this mapping does not change tool definitions. Named icons and sheet images are
+cached. Sprite transparency is preserved. High-DPI sheets must scale the entire
+base geometry exactly (including margins and gaps); crops receive the matching
+device pixel ratio. Invalid files/cells produce diagnostics and an empty icon;
+an invalid optional high-DPI sheet falls back to the base sheet.
+
+Custom disabled/checked artwork is also supported:
 
 ```cpp
-icons.registerIcon(exportIconKey, QVector<pl::gui::IconVariant>{
-    {pl::gui::IconSource::file(":/icons/export.svg")},
-    {pl::gui::IconSource::file(":/icons/export-disabled.svg"), QIcon::Disabled},
-    {pl::gui::IconSource::file(":/icons/export-checked.svg"), QIcon::Normal, QIcon::On}
+menus.registerIcon(IconId::Run, QVector<pl::gui::IconVariant>{
+    {pl::gui::IconSource::file(":/icons/run.svg")},
+    {pl::gui::IconSource::file(":/icons/run-disabled.svg"), QIcon::Disabled},
+    {pl::gui::IconSource::file(":/icons/run-checked.svg"), QIcon::Normal, QIcon::On}
 });
 ```
 
-Qt generates fallback modes when custom artwork is absent. Each mode/state pair
-must be unique. An existing QIcon carries its own variants and is registered on
-its own. SVG sources are added first to select the vector icon engine. Qt SVG is
-a required dependency of `pl_core_gui`; deployment must include the Qt SVG icon
-engine plugin with the application's other Qt runtime dependencies.
+Qt generates fallback appearances when variants are absent. SVG remains scalable;
+deployment needs the Qt SVG icon engine plugin with the other Qt runtime libraries.
 
-The application sets `nativeMenuBar` to false so Tools stays visible inside the
-window on macOS as well as other platforms. The top-level Tools entry uses its
-text label; Qt menu bars can replace that label with an icon if one is assigned.
-Submenus and commands retain their icons and request icon visibility explicitly.
-The reusable registry leaves menu-bar placement to its host application. Menu
-roles remain explicit (`NoRole` by default).
+## Current application layout
 
-## Build and validation
+For Product 1:
 
-```sh
-cmake --preset macos-qt
-cmake --build --preset macos-qt -j 8
-ctest --preset macos-qt
+```text
+Native menu bar:
+File   Edit   View   Tools   UniqueAsset1   UniqueAsset2   Help
+                     |           |              |
+                 Run API       Enabled        Enabled
+                 Settings      Run feature    Run feature
+
+Horizontal toolbar inside the window:
+[Run API] [Settings]  |  [Enable Asset1] [Run Asset1]  |  [Enable Asset2] [Run Asset2]
 ```
 
-`MenuSystemTests` covers menu nesting/ordering, visibility, registration failures,
-module IDs, dispatch, translation, context lifetime, ownership, PNG extraction,
-transparency, high-DPI sources, SVG scaling, caching, and invalid artwork.
-`Product_1MenuTests` through `Product_5MenuTests` compile the actual application
-window/controller/builder for each variant, linking only that variant's facility
-libraries. They exercise composition, facility Enable/Run, API start/stop/failure,
-and shutdown cleanup. A shown-window regression verifies that Tools has visible,
-clickable geometry inside the window and that its popup opens. GUI tests default
-to Qt's offscreen platform; use `QT_QPA_PLATFORM=cocoa` to run the visibility
-regression against the macOS backend. Existing
-facility and gRPC tests remain separate.
+Each product exposes only its own facilities, directly in the top-level row.
+There is no Product wrapper or product dropdown toolbar button. View can hide and
+restore the toolbar or status bar. Editing actions are disabled because this shell
+has no editable document yet. API Settings remains a disabled placeholder.
 
-The implementation uses Qt5/Qt6-compatible APIs. Primary validation uses the
-installed Qt 6.11 SDK; Qt5 compilation requires a separate Qt5 SDK.
+Qt chooses the platform's default menu-bar behavior: on macOS the menu bar belongs
+to the system menu, while the toolbar stays inside the application window. The
+application no longer forces an in-window menu bar. Other platforms follow their
+Qt desktop integration. Top-level menu titles are textual; tools have icons.
+
+API Run/Stop uses the actual server state. Facility enable state is shared safely
+with gRPC workers. The application refreshes facility actions when their menu
+opens and after local enable changes; a running operation is not cancelled by a
+later disable. For external state notifications, call `syncFacility` in the GUI
+thread to refresh both displays. Input collection and result/error presentation
+belong to application handlers, not to the facility or the menu framework.
+
+`MenuSystem::retranslate()` updates both displays from their original translation
+contexts. `MenuText` supports arguments for translated tooltips such as
+`{"ApplicationMenus", "Run %1", {facilityName}}`. Controllers refresh dynamic
+labels such as API Run/Stop afterward.
+
+## Validation
+
+```sh
+cmake --build --preset macos-qt -j 8
+ctest --preset macos-qt
+QT_QPA_PLATFORM=cocoa ~/pl_build/bin/Product_1MenuTests
+```
+
+Core tests cover the shared action model, single-entry additions, list order,
+menu-only commands, visibility, ownership, invalid definitions, translations,
+and PNG/SVG sources. Product tests compile all five variants and check native
+menu policy, top-level facilities, toolbar geometry, shared command/state behavior,
+View toggles, API start/stop/failure, and shutdown. Headless tests use the offscreen
+backend; the Cocoa run checks the actual macOS policy. Qt5-compatible APIs are
+used; Qt5 compilation needs a separately installed SDK.

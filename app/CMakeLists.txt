@@ -25,8 +25,8 @@ set(PROJECT_SOURCES
     Menus/MenuIds.h
     Menus/ApplicationMenus.h
     Menus/ApplicationMenus.cpp
-    Menus/WindowMenus.h
-    Menus/WindowMenus.cpp
+    Menus/ApplicationIcons.h
+    Menus/ApplicationIcons.cpp
     Tools/ToolController.h
     Tools/ToolController.cpp
     resources/icons.qrc

@@ -25,13 +25,12 @@ namespace {
 QString text(const char* source) { return QCoreApplication::translate("ToolController", source); }
 
 template<class Asset, class Request, class Reply>
-FacilityTool facility(const QMap<QString, IPLAsset*>& assets, const QString& name, FacilityId id)
+FacilityTool facility(const QMap<QString, IPLAsset*>& assets, const QString& name, MenuId menu, ToolId enabled, ToolId run)
 {
     auto* asset = dynamic_cast<Asset*>(assets.value(name));
     if (!asset)
         throw std::logic_error((QStringLiteral("Missing facility: ") + name).toStdString());
-    const auto scope = QStringLiteral("app.facility.") + name;
-    return {name, facilityMenuKey(id), {scope, FacilityAction::Enabled}, {scope, FacilityAction::Run},
+    return {name, menu, enabled, run,
         asset, [asset] {
             // These sample facilities accept an empty request. Future commands
             // collect their input here, without coupling the asset to widgets.
@@ -44,26 +43,26 @@ FacilityTool facility(const QMap<QString, IPLAsset*>& assets, const QString& nam
 }
 } // namespace
 
-ToolController::ToolController(pl::gui::MenuRegistry& menus, pl::gui::IconProvider& icons,
+ToolController::ToolController(ApplicationMenuSystem& menus,
                                GrpcApiServer& api, const QMap<QString, IPLAsset*>& assets,
                                Reporter reporter, QObject* parent)
-    : QObject(parent), menus_(menus), icons_(icons), api_(api), report_(std::move(reporter))
+    : QObject(parent), menus_(menus), api_(api), report_(std::move(reporter))
 {
 #ifdef UAsset1
     facilities_.append(facility<UniqueAsset1, plapi::Asset1RunFeatureRequest, plapi::Asset1RunFeatureReply>(
-        assets, QStringLiteral("UniqueAsset1"), FacilityId::Asset1));
+        assets, QStringLiteral("UniqueAsset1"), MenuId::Asset1, ToolId::EnableAsset1, ToolId::RunAsset1));
 #endif
 #ifdef UAsset2
     facilities_.append(facility<UniqueAsset2, plapi::Asset2RunFeatureRequest, plapi::Asset2RunFeatureReply>(
-        assets, QStringLiteral("UniqueAsset2"), FacilityId::Asset2));
+        assets, QStringLiteral("UniqueAsset2"), MenuId::Asset2, ToolId::EnableAsset2, ToolId::RunAsset2));
 #endif
 #ifdef UAsset3
     facilities_.append(facility<UniqueAsset3, plapi::Asset3RunFeatureRequest, plapi::Asset3RunFeatureReply>(
-        assets, QStringLiteral("UniqueAsset3"), FacilityId::Asset3));
+        assets, QStringLiteral("UniqueAsset3"), MenuId::Asset3, ToolId::EnableAsset3, ToolId::RunAsset3));
 #endif
 #ifdef UAsset4
     facilities_.append(facility<UniqueAsset4, plapi::Asset4RunFeatureRequest, plapi::Asset4RunFeatureReply>(
-        assets, QStringLiteral("UniqueAsset4"), FacilityId::Asset4));
+        assets, QStringLiteral("UniqueAsset4"), MenuId::Asset4, ToolId::EnableAsset4, ToolId::RunAsset4));
 #endif
 }
 
@@ -82,11 +81,11 @@ void ToolController::toggleApi()
 
 void ToolController::syncApi()
 {
-    if (auto* action = menus_.action(actionKey(ActionId::ToggleApi))) {
+    if (auto* action = menus_.action(ToolId::ToggleApi)) {
         const bool running = api_.isRunning();
-        action->setText(running ? text(QT_TRANSLATE_NOOP("ToolController", "Stop"))
-                                : text(QT_TRANSLATE_NOOP("ToolController", "Run")));
-        action->setIcon(icons_.icon(iconKey(running ? IconId::Stop : IconId::Run)));
+        action->setText(running ? text(QT_TRANSLATE_NOOP("ToolController", "Stop API"))
+                                : text(QT_TRANSLATE_NOOP("ToolController", "Run API")));
+        action->setIcon(menus_.icon(running ? IconId::Stop : IconId::Run));
     }
 }
 

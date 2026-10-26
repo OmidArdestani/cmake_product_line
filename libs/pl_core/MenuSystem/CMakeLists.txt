@@ -5,6 +5,7 @@ add_library(pl_core_gui STATIC
     MenuDefinitions.h
     MenuRegistry.h
     MenuRegistry.cpp
+    MenuSystem.h
     Icons/IconProvider.h
     Icons/IconProvider.cpp
 )

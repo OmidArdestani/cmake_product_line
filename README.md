@@ -8,7 +8,7 @@
 ## Features
 
 - **Product Builder Design:** Composes each product's facilities; menu definitions and GUI-to-facility wiring live in the application.
-- **Shared Qt Menu System:** `pl_core_gui` provides enum-based menus and cached PNG-atlas/SVG icons; application tool controllers connect GUI commands to facilities. See [menu and icon guide](docs/menu-system.md).
+- **Shared Qt Menu System:** `pl_core_gui` builds menus and toolbar buttons from one ordered, enum-based definition, with cached PNG-atlas/SVG icons; application handlers connect tools to facilities. See [menu and icon guide](docs/menu-system.md).
 - **Shared Libraries:** Unique assets are implemented as shared libraries for modular development.
 - **Unit Testing:** GoogleTest test suite covering all assets, including gRPC integration tests.
 - **CMake-only Build System:** Single CMake tree; QMake support removed.

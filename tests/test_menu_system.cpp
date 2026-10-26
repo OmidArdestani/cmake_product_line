@@ -146,13 +146,16 @@ TEST_F(MenuTest, CanRetranslateWithoutChangingIdentityOrConnections)
         { return QByteArray(context) == "Test" ? QStringLiteral("Translated ") + QString::fromUtf8(source) : QString(); }
     } translator;
     int calls = 0;
-    ASSERT_TRUE(menus.addAction(key(Menu::Root), command(Command::First), &receiver, [&](bool) { ++calls; }));
+    auto translatedCommand = command(Command::First);
+    translatedCommand.toolTip = {"Test", "Use %1", {QStringLiteral("asset")}};
+    ASSERT_TRUE(menus.addAction(key(Menu::Root), translatedCommand, &receiver, [&](bool) { ++calls; }));
     QCoreApplication::installTranslator(&translator);
     menus.retranslate();
     QCoreApplication::removeTranslator(&translator);
     EXPECT_EQ(menus.menu(key(Menu::Root))->title(), QStringLiteral("Translated Tools"));
     auto* action = menus.action(key(Command::First));
     EXPECT_EQ(action->text(), QStringLiteral("Translated Execute"));
+    EXPECT_EQ(action->toolTip(), QStringLiteral("Translated Use asset"));
     action->trigger();
     EXPECT_EQ(calls, 1);
 }

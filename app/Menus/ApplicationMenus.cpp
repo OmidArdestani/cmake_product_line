@@ -1,105 +1,97 @@
 #include "ApplicationMenus.h"
-#include "MenuIds.h"
 #include "Tools/ToolController.h"
+#include <QMessageBox>
+#include <QStatusBar>
 
 namespace app {
 namespace {
 pl::gui::MenuText text(const char* source) { return {"ApplicationMenus", source}; }
+pl::gui::MenuText literal(const QString& value) { return {{}, value.toUtf8()}; }
 
-const char* productTitle()
+Tool menuOnly(Tool tool, QKeySequence shortcut = {})
 {
-#if defined(Product_1)
-    return QT_TRANSLATE_NOOP("ApplicationMenus", "Product 1");
-#elif defined(Product_2)
-    return QT_TRANSLATE_NOOP("ApplicationMenus", "Product 2");
-#elif defined(Product_3)
-    return QT_TRANSLATE_NOOP("ApplicationMenus", "Product 3");
-#elif defined(Product_4)
-    return QT_TRANSLATE_NOOP("ApplicationMenus", "Product 4");
-#elif defined(Product_5)
-    return QT_TRANSLATE_NOOP("ApplicationMenus", "Product 5");
-#else
-#error A product variant must be selected
-#endif
+    tool.placement = pl::gui::ToolPlacement::MenuOnly;
+    tool.shortcut = shortcut;
+    return tool;
+}
+
+Tool editing(ToolId id, const char* label, QKeySequence shortcut, bool separator = false)
+{
+    Tool tool{id, text(label), {}, text(QT_TRANSLATE_NOOP("ApplicationMenus", "No editable document is open")), {}};
+    tool = menuOnly(tool, shortcut);
+    tool.enabled = false;
+    tool.separatorBefore = separator;
+    return tool;
 }
 } // namespace
 
-bool registerApplicationIcons(pl::gui::IconProvider& icons)
+UiDefinition applicationMenus(QMainWindow& window, ApplicationMenuSystem& menus, ToolController& tools)
 {
-    using pl::gui::IconSource;
-    return icons.registerIcon(iconKey(IconId::Tools), IconSource::file(QStringLiteral(":/icons/tools.svg")))
-        && icons.registerIcon(iconKey(IconId::Api), IconSource::file(QStringLiteral(":/icons/api.svg")))
-        && icons.registerIcon(iconKey(IconId::Run), IconSource::file(QStringLiteral(":/icons/run.svg")))
-        && icons.registerIcon(iconKey(IconId::Stop), IconSource::file(QStringLiteral(":/icons/stop.svg")))
-        && icons.registerIcon(iconKey(IconId::Settings), IconSource::file(QStringLiteral(":/icons/settings.svg")))
-        && icons.registerIcon(iconKey(IconId::Product), IconSource::file(QStringLiteral(":/icons/product.svg")));
-}
+    // Add groups and tools here in display order. Every tool goes into BOTH its
+    // menu and the toolbar unless explicitly marked menuOnly(). No widget code.
+    UiDefinition ui{
+        {MenuId::File, text(QT_TRANSLATE_NOOP("ApplicationMenus", "File")), {
+            menuOnly({ToolId::Exit, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Exit")), {}, {},
+                      [&window](bool) { window.close(); }}, QKeySequence::Quit)
+        }},
+        {MenuId::Edit, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Edit")), {
+            editing(ToolId::Undo, QT_TRANSLATE_NOOP("ApplicationMenus", "Undo"), QKeySequence::Undo),
+            editing(ToolId::Redo, QT_TRANSLATE_NOOP("ApplicationMenus", "Redo"), QKeySequence::Redo),
+            editing(ToolId::Cut, QT_TRANSLATE_NOOP("ApplicationMenus", "Cut"), QKeySequence::Cut, true),
+            editing(ToolId::Copy, QT_TRANSLATE_NOOP("ApplicationMenus", "Copy"), QKeySequence::Copy),
+            editing(ToolId::Paste, QT_TRANSLATE_NOOP("ApplicationMenus", "Paste"), QKeySequence::Paste),
+            editing(ToolId::SelectAll, QT_TRANSLATE_NOOP("ApplicationMenus", "Select all"), QKeySequence::SelectAll, true)
+        }},
+        {MenuId::View, text(QT_TRANSLATE_NOOP("ApplicationMenus", "View")), {}},
+        {MenuId::Tools, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Tools")), {
+            {ToolId::ToggleApi, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Run API")), IconId::Run,
+             text(QT_TRANSLATE_NOOP("ApplicationMenus", "Start or stop the API server")),
+             [&tools](bool) { tools.toggleApi(); }},
+            {ToolId::ApiSettings, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Settings…")), IconId::Settings,
+             text(QT_TRANSLATE_NOOP("ApplicationMenus", "API settings are not available yet")), {},
+             pl::gui::ToolPlacement::MenuAndToolbar, false}
+        }, &tools, [&tools] { tools.syncApi(); }}
+    };
 
-bool registerApplicationMenus(pl::gui::MenuRegistry& menus, pl::gui::IconProvider& icons,
-                              ToolController& tools)
-{
-    using namespace pl::gui;
-    if (!menus.addMenu({menuKey(MenuId::File), {}, text(QT_TRANSLATE_NOOP("ApplicationMenus", "File")), 10})
-        || !menus.addMenu({menuKey(MenuId::Edit), {}, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Edit")), 20})
-        || !menus.addMenu({menuKey(MenuId::View), {}, text(QT_TRANSLATE_NOOP("ApplicationMenus", "View")), 30})
-        // An in-window QMenuBar can display an icon instead of its title.
-        // Keep the top-level Tools label; submenu entries retain their icons.
-        || !menus.addMenu({menuKey(MenuId::Tools), {}, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Tools")), 40})
-        || !menus.addMenu({menuKey(MenuId::Help), {}, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Help")), 50})
-        || !menus.addMenu({menuKey(MenuId::Api), menuKey(MenuId::Tools), text(QT_TRANSLATE_NOOP("ApplicationMenus", "API")), 10,
-                           icons.icon(iconKey(IconId::Api))})
-        || !menus.addMenu({menuKey(MenuId::Product), menuKey(MenuId::Tools), text(productTitle()), 20,
-                           icons.icon(iconKey(IconId::Product))}))
-        return false;
+    // View commands are menu-only: hiding the toolbar must not hide its restore control.
+    Tool showToolbar = menuOnly({ToolId::ToggleToolsToolbar, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Tools toolbar")), {}, {},
+        [&menus](bool checked) { menus.toolbar()->setVisible(checked); }});
+    showToolbar.checkable = showToolbar.checked = true;
+    Tool showStatus = menuOnly({ToolId::ToggleStatusBar, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Status bar")), {}, {},
+        [&window](bool checked) { window.statusBar()->setVisible(checked); }});
+    showStatus.checkable = showStatus.checked = true;
+    // Find by ID so inserting another group doesn't change the receiving menu.
+    for (auto& group : ui) {
+        if (group.id == MenuId::View) {
+            group.tools = {showToolbar, showStatus};
+            group.onOpen = [&menus, &window] {
+                menus.action(ToolId::ToggleToolsToolbar)->setChecked(!menus.toolbar()->isHidden());
+                menus.action(ToolId::ToggleStatusBar)->setChecked(!window.statusBar()->isHidden());
+            };
+        }
+    }
 
-    ActionDefinition api;
-    api.id = actionKey(ActionId::ToggleApi);
-    api.text = text(QT_TRANSLATE_NOOP("ApplicationMenus", "Run"));
-    api.icon = icons.icon(iconKey(IconId::Run));
-    api.toolTip = text(QT_TRANSLATE_NOOP("ApplicationMenus", "Start or stop the API server"));
-    if (!menus.addAction(menuKey(MenuId::Api), api, &tools, [&tools](bool) { tools.toggleApi(); }))
-        return false;
-
-    ActionDefinition settings;
-    settings.id = actionKey(ActionId::ApiSettings);
-    settings.text = text(QT_TRANSLATE_NOOP("ApplicationMenus", "Settings…"));
-    settings.icon = icons.icon(iconKey(IconId::Settings));
-    settings.order = 10;
-    settings.enabled = false;
-    settings.toolTip = text(QT_TRANSLATE_NOOP("ApplicationMenus", "API settings are not available yet"));
-    if (!menus.addAction(menuKey(MenuId::Api), settings, &tools, [](bool) {}))
-        return false;
-    QObject::connect(menus.menu(menuKey(MenuId::Api)), &QMenu::aboutToShow, &tools, [&tools] { tools.syncApi(); });
-
-    int order = 0;
+    // Each facility is a top-level group. These same two definitions also add
+    // its toolbar buttons; there is no Product wrapper or separate toolbar list.
     for (const auto& facility : tools.facilities()) {
-        if (!menus.addMenu({facility.menu, menuKey(MenuId::Product), {{}, facility.name.toUtf8()}, order++,
-                           icons.icon(iconKey(IconId::Product))}))
-            return false;
-        ActionDefinition enabled;
-        enabled.id = facility.enabledAction;
-        enabled.text = text(QT_TRANSLATE_NOOP("ApplicationMenus", "Enabled"));
-        enabled.icon = icons.icon(iconKey(IconId::Settings));
+        Tool enabled{facility.enabledAction, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Enabled")), IconId::Settings,
+            {"ApplicationMenus", QT_TRANSLATE_NOOP("ApplicationMenus", "Enable %1"), {facility.name}},
+            [&tools, facility](bool checked) { tools.setFacilityEnabled(facility, checked); }};
         enabled.checkable = true;
         enabled.checked = facility.asset->isEnable();
-        ActionDefinition run;
-        run.id = facility.runAction;
-        run.text = text(QT_TRANSLATE_NOOP("ApplicationMenus", "Run feature"));
-        run.order = 10;
-        run.icon = icons.icon(iconKey(IconId::Run));
+        Tool run{facility.runAction, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Run feature")), IconId::Run,
+            {"ApplicationMenus", QT_TRANSLATE_NOOP("ApplicationMenus", "Run %1"), {facility.name}},
+            [&tools, facility](bool) { tools.runFacility(facility); }};
         run.enabled = facility.asset->isEnable();
-        if (!menus.addAction(facility.menu, enabled, &tools, [&tools, facility](bool checked) {
-                tools.setFacilityEnabled(facility, checked);
-            }) || !menus.addAction(facility.menu, run, &tools, [&tools, facility](bool) {
-                tools.runFacility(facility);
-            }))
-            return false;
-        QObject::connect(menus.menu(facility.menu), &QMenu::aboutToShow, &tools, [&tools, facility] {
-            tools.syncFacility(facility);
-        });
+        ui.append({facility.menu, literal(facility.name), {enabled, run}, &tools,
+                   [&tools, facility] { tools.syncFacility(facility); }});
     }
-    tools.syncApi();
-    return true;
+
+    ui.append({MenuId::Help, text(QT_TRANSLATE_NOOP("ApplicationMenus", "Help")), {
+        menuOnly({ToolId::AboutQt, text(QT_TRANSLATE_NOOP("ApplicationMenus", "About Qt…")), {}, {},
+                  [&window](bool) { QMessageBox::aboutQt(&window); }})
+    }});
+    return ui;
 }
 
 } // namespace app

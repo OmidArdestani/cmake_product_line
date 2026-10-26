@@ -5,6 +5,7 @@
 #include <QCoreApplication>
 #include <QIcon>
 #include <QKeySequence>
+#include <QStringList>
 #include <optional>
 
 namespace pl::gui {
@@ -13,11 +14,15 @@ struct MenuText
 {
     QByteArray context;
     QByteArray source;
+    QStringList arguments;
 
     QString resolve() const
     {
-        return context.isEmpty() ? QString::fromUtf8(source)
-                                 : QCoreApplication::translate(context.constData(), source.constData());
+        auto result = context.isEmpty() ? QString::fromUtf8(source)
+                                       : QCoreApplication::translate(context.constData(), source.constData());
+        for (const auto& argument : arguments)
+            result = result.arg(argument);
+        return result;
     }
 };
 

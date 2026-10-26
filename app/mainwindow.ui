@@ -15,9 +15,6 @@
   </property>
   <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
-   <property name="nativeMenuBar">
-    <bool>false</bool>
-   </property>
    <property name="geometry">
     <rect>
      <x>0</x>

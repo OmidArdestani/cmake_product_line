@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Menus/MenuIds.h"
-#include <MenuSystem/MenuRegistry.h>
-#include <MenuSystem/Icons/IconProvider.h>
 #include <pl_core/sharedassets.h>
 #include <functional>
 
@@ -13,9 +11,9 @@ namespace app {
 struct FacilityTool
 {
     QString name;
-    pl::gui::MenuKey menu;
-    pl::gui::ActionKey enabledAction;
-    pl::gui::ActionKey runAction;
+    MenuId menu;
+    ToolId enabledAction;
+    ToolId runAction;
     IPLAsset* asset = nullptr; // application-owned; outlives this controller
     std::function<void()> run;
 };
@@ -24,7 +22,7 @@ class ToolController : public QObject
 {
 public:
     using Reporter = std::function<void(const QString&, bool error)>;
-    ToolController(pl::gui::MenuRegistry& menus, pl::gui::IconProvider& icons,
+    ToolController(ApplicationMenuSystem& menus,
                    GrpcApiServer& api, const QMap<QString, IPLAsset*>& assets,
                    Reporter reporter, QObject* parent = nullptr);
 
@@ -36,8 +34,7 @@ public:
     void runFacility(const FacilityTool& facility);
 
 private:
-    pl::gui::MenuRegistry& menus_;
-    pl::gui::IconProvider& icons_;
+    ApplicationMenuSystem& menus_;
     GrpcApiServer& api_;
     Reporter report_;
     QVector<FacilityTool> facilities_;

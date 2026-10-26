@@ -40,7 +40,7 @@ set_target_properties(XXProductLineTests PROPERTIES
 gtest_discover_tests(XXProductLineTests DISCOVERY_MODE PRE_TEST)
 
 # GUI tests have their own QApplication and don't add Widgets to facility tests.
-add_executable(MenuSystemTests gui_test_main.cpp test_menu_system.cpp)
+add_executable(MenuSystemTests gui_test_main.cpp test_menu_system.cpp test_menu_system_builder.cpp)
 target_link_libraries(MenuSystemTests PRIVATE GTest::gtest pl_core_gui)
 gtest_discover_tests(MenuSystemTests DISCOVERY_MODE PRE_TEST TEST_PREFIX "MenuSystem.")
 
@@ -58,7 +58,7 @@ function(add_product_menu_tests product)
         ${CMAKE_SOURCE_DIR}/app/mainwindow.cpp
         ${CMAKE_SOURCE_DIR}/app/mainwindow.ui
         ${CMAKE_SOURCE_DIR}/app/Menus/ApplicationMenus.cpp
-        ${CMAKE_SOURCE_DIR}/app/Menus/WindowMenus.cpp
+        ${CMAKE_SOURCE_DIR}/app/Menus/ApplicationIcons.cpp
         ${CMAKE_SOURCE_DIR}/app/Tools/ToolController.cpp
         ${CMAKE_SOURCE_DIR}/app/ProductBuilder/Product${product_number}Builder.cpp
         ${CMAKE_SOURCE_DIR}/app/ProductLineAPI/grpcapiserver.cpp
@@ -74,7 +74,8 @@ function(add_product_menu_tests product)
         string(REPLACE "UAsset" "UniqueAsset" asset_target ${asset})
         target_link_libraries(${target} PRIVATE ${asset_target})
     endforeach()
-    gtest_discover_tests(${target} DISCOVERY_MODE PRE_TEST TEST_PREFIX "${product}.")
+    # Cold startup loads Qt plus the product's gRPC shared libraries on macOS.
+    gtest_discover_tests(${target} DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 60 TEST_PREFIX "${product}.")
 endfunction()
 
 foreach(product_number RANGE 1 5)

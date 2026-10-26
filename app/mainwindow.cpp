@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "Menus/ApplicationMenus.h"
-#include "Menus/WindowMenus.h"
+#include "Menus/ApplicationIcons.h"
 #include "Tools/ToolController.h"
 #include <QDebug>
 #include <QEvent>
@@ -80,8 +80,8 @@ void MainWindow::buildProduct()
 
 void MainWindow::buildMenus()
 {
-    menus = std::make_unique<pl::gui::MenuRegistry>(menuBar());
-    tools = std::make_unique<app::ToolController>(*menus, icons, apiServer, productAssetMap,
+    menus = std::make_unique<app::ApplicationMenuSystem>(*this);
+    tools = std::make_unique<app::ToolController>(*menus, apiServer, productAssetMap,
         [this](const QString& message, bool error) {
             statusBar()->showMessage(message, error ? 15000 : 5000);
             if (error)
@@ -89,9 +89,11 @@ void MainWindow::buildMenus()
             else
                 qInfo().noquote() << message;
         });
-    if (!app::registerApplicationIcons(icons) || !app::registerApplicationMenus(*menus, icons, *tools)
-        || !app::registerWindowMenus(*menus, *this))
+    // Icons once, one ordered definition, one build for both GUI surfaces.
+    if (!app::registerApplicationIcons(*menus)
+        || !menus->build(app::applicationMenus(*this, *menus, *tools)))
         throw std::logic_error("Application menu registration failed");
+    tools->syncApi();
 }
 
 void MainWindow::changeEvent(QEvent* event)
